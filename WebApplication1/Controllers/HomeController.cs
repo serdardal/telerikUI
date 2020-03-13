@@ -8,6 +8,7 @@ using Deneme.Models;
 using System.IO;
 using Microsoft.AspNetCore.Http;
 using OfficeOpenXml;
+using WebApplication1.Models;
 
 namespace Deneme.Controllers
 {
@@ -27,6 +28,15 @@ namespace Deneme.Controllers
             return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
         }
 
+        [HttpGet("Home/GetSavedFileByName/{docName}")]
+        public string GetSavedFileByName(string docName)
+        {
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "Saves", docName);
+            byte[] fileByteArray = System.IO.File.ReadAllBytes(path);
+            string file = Convert.ToBase64String(fileByteArray);
+            return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
+        }
+
 
         [HttpGet]
         public IActionResult GetTemplateNames()
@@ -38,10 +48,21 @@ namespace Deneme.Controllers
             return Ok(excelFiles);
         }
 
-        [HttpGet("Home/GetUnlockedCells/{docName}")]
-        public IActionResult GetUnlockedCells(string docName)
+        [HttpGet]
+        public IActionResult GetSavedFileNames()
         {
-            string path = Path.Combine(Directory.GetCurrentDirectory(), "Forms", docName);
+            string[] excelFiles = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "Saves"), "*.xlsx")
+                                     .Select(Path.GetFileName)
+                                     .ToArray();
+
+            return Ok(excelFiles);
+        }
+
+        [HttpPost]
+        public IActionResult GetUnlockedCells([FromBody] CellUnlockModel model)
+        {
+            string selectFolder = model.IsTemplate ? "Forms" : "Saves";
+            string path = Path.Combine(Directory.GetCurrentDirectory(), selectFolder, model.DocumentName);
             List<UnlockedCellModel> unlockedCells = new List<UnlockedCellModel>();
             
             FileInfo fi = new FileInfo(path);
@@ -66,9 +87,10 @@ namespace Deneme.Controllers
         }
 
         [HttpPost]
-        public IActionResult WriteToExcelFile([FromBody] List<FilledCellModel> cells)
+        public IActionResult WriteToExcelFile([FromBody] FileSaveModel model)
         {
-            string path = Path.Combine(Directory.GetCurrentDirectory(), "Forms", "bloksaplamaları.xlsx");
+            List<FilledCellModel> cells = model.CellList;
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "Forms", model.TemplateName);
             FileInfo fi = new FileInfo(path);
             using (ExcelPackage excelPackage = new ExcelPackage(fi))
             {
@@ -79,7 +101,9 @@ namespace Deneme.Controllers
                     firstWorksheet.Cells[cells[i].RowIndex, cells[i].ColumnIndex].Value = cells[i].Value;
                 }
 
-                string savePath = Path.Combine(Directory.GetCurrentDirectory(), "Saves", "Kayit.xlsx");
+                string savePath = Path.Combine(Directory.GetCurrentDirectory(),
+                    "Saves", 
+                    model.TemplateName.Replace(".xlsx","")+"_"+model.DocumentName+"_"+model.Date.ToString("dd.MM.yyyy") + ".xlsx");
                 FileInfo savePathFI = new FileInfo(savePath);
                 excelPackage.SaveAs(savePathFI);
 
