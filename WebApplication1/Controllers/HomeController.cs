@@ -9,6 +9,7 @@ using System.IO;
 using Microsoft.AspNetCore.Http;
 using OfficeOpenXml;
 using WebApplication1.Models;
+using WebApplication1.Models.Contracts;
 
 namespace Deneme.Controllers
 {
@@ -105,6 +106,29 @@ namespace Deneme.Controllers
                     "Saves", 
                     model.TemplateName.Replace(".xlsx","")+"_"+model.DocumentName+"_"+model.Date.ToString("dd.MM.yyyy") + ".xlsx");
                 FileInfo savePathFI = new FileInfo(savePath);
+                excelPackage.SaveAs(savePathFI);
+
+            }
+
+            return Ok();
+        }
+
+        public IActionResult UpdateExistingFile([FromBody] FileUpdateModel model)
+        {
+            List<FilledCellModel> cells = model.CellList;
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "Saves", model.DocumentName);
+
+            FileInfo fi = new FileInfo(path);
+            using (ExcelPackage excelPackage = new ExcelPackage(fi))
+            {
+                ExcelWorksheet firstWorksheet = excelPackage.Workbook.Worksheets[0];
+
+                for (int i = 0; i < cells.Count; i++)
+                {
+                    firstWorksheet.Cells[cells[i].RowIndex, cells[i].ColumnIndex].Value = cells[i].Value;
+                }
+
+                FileInfo savePathFI = new FileInfo(path);
                 excelPackage.SaveAs(savePathFI);
 
             }

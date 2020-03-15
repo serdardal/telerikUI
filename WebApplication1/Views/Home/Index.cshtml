@@ -24,8 +24,8 @@
                 <label>Date:</label>
                 <input type="date" id="dateInput" data-date-format="DD MMMM YYYY">
             </div>
-            <button onclick="sendFilledCells()" style="margin-left: 10px" id="saveButton">Save</button>
-            <button onclick="sendFilledCells()" style="margin-left: 10px" id="updateButton" hidden>Update</button>
+            <button onclick="handleSaveButoon()" style="margin-left: 10px" id="saveButton">Save</button>
+            <button onclick="handleUpdateButton()" style="margin-left: 10px" id="updateButton" hidden>Update</button>
             <div id="spreadsheet" style="float:left; width:100%"></div>
         </div>
     </div>
@@ -93,7 +93,41 @@
 
     }
 
-    function sendFilledCells() {
+    function handleSaveButoon() {
+        var filledCells = findFilledCells();
+
+        var data = {
+            templateName: currentDocumentName,
+            documentName: $("#nameInput").val(),
+            date: $("#dateInput").val(),
+            cellList: filledCells
+        }
+
+        $.ajax({
+            url: 'Home/WriteToExcelFile',
+            method: "post",
+            contentType: "application/json",
+            data: JSON.stringify(data)
+        })
+    }
+
+    function handleUpdateButton() {
+        var filledCells = findFilledCells();
+
+        var data = {
+            documentName: $("#nameInput").val(),
+            cellList: filledCells
+        }
+
+        $.ajax({
+            url: 'Home/UpdateExistingFile',
+            method: "post",
+            contentType: "application/json",
+            data: JSON.stringify(data)
+        })
+    }
+
+    function findFilledCells() {
         var sheetList = spread.sheets();
         var sheet = sheetList[0];
 
@@ -111,19 +145,7 @@
                 })
         }
 
-        var data = {
-            templateName: currentDocumentName,
-            documentName: $("#nameInput").val(),
-            date: $("#dateInput").val(),
-            cellList: filledCells
-        }
-
-        $.ajax({
-            url: 'Home/WriteToExcelFile',
-            method: "post",
-            contentType: "application/json",
-            data: JSON.stringify(data)
-        })
+        return filledCells;
     }
 
     function loadTemplateNames(names) {
