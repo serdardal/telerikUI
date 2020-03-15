@@ -7,8 +7,11 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using WebApplication1.Data;
+using WebApplication1.Services;
 
 namespace WebApplication1
 {
@@ -33,6 +36,11 @@ namespace WebApplication1
 
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+
+            services.AddDbContext<DataContext>(options =>
+            options.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=TelerikDB;Trusted_Connection=True;MultipleActiveResultSets=true;"));
+
+            services.AddScoped<IExcelService, ExcelService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

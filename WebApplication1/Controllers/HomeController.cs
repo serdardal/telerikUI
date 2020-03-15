@@ -10,11 +10,18 @@ using Microsoft.AspNetCore.Http;
 using OfficeOpenXml;
 using WebApplication1.Models;
 using WebApplication1.Models.Contracts;
+using WebApplication1.Services;
 
 namespace Deneme.Controllers
 {
     public class HomeController : Controller
     {
+        private IExcelService _excelService;
+        public HomeController(IExcelService excelService)
+        {
+            _excelService = excelService;
+        }
+
         public IActionResult Index()
         {
             return View();
@@ -88,10 +95,11 @@ namespace Deneme.Controllers
         }
 
         [HttpPost]
-        public IActionResult WriteToExcelFile([FromBody] FileSaveModel model)
+        public async Task<IActionResult> WriteToExcelFile([FromBody] FileSaveModel model)
         {
             List<FilledCellModel> cells = model.CellList;
             string path = Path.Combine(Directory.GetCurrentDirectory(), "Forms", model.TemplateName);
+            string fileName = model.TemplateName.Replace(".xlsx", "") + "_" + model.DocumentName + "_" + model.Date.ToString("dd.MM.yyyy") + ".xlsx";
             FileInfo fi = new FileInfo(path);
             using (ExcelPackage excelPackage = new ExcelPackage(fi))
             {
@@ -103,12 +111,28 @@ namespace Deneme.Controllers
                 }
 
                 string savePath = Path.Combine(Directory.GetCurrentDirectory(),
-                    "Saves", 
-                    model.TemplateName.Replace(".xlsx","")+"_"+model.DocumentName+"_"+model.Date.ToString("dd.MM.yyyy") + ".xlsx");
+                    "Saves", fileName);
                 FileInfo savePathFI = new FileInfo(savePath);
                 excelPackage.SaveAs(savePathFI);
 
             }
+
+            List<CellRecord> cellRecords = new List<CellRecord>();
+            foreach(FilledCellModel cell in cells)
+            {
+                cellRecords.Add(new CellRecord
+                {
+                    RowIndex = cell.RowIndex,
+                    ColumnIndex = cell.ColumnIndex,
+                    Data = cell.Value,
+                    TableIndex = 0,
+                    TemplateName = model.TemplateName,
+                    FileName = fileName,
+                    Date = model.Date
+                });
+            }
+
+            await _excelService.AddNewCellsAsync(cellRecords);
 
             return Ok();
         }
