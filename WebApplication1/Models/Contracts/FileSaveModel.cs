@@ -14,6 +14,6 @@ namespace WebApplication1.Models
 
         public DateTime Date { get; set; }
 
-        public List<FilledCellModel> CellList { get; set; }
+        public List<FilledTableModel> TableList { get; set; }
     }
 }

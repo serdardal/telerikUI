@@ -10,6 +10,10 @@ namespace WebApplication1.Services
     {
         Task<bool> AddNewCellsAsync(List<CellRecord> cellRecords);
 
-        Task<bool> UpdateCellsAsync(List<CellRecord> cellRecords);
+        Task<bool> UpdateCellsAsync(List<CellRecord> addedCellRecords, List<CellRecord> changedCellRecords, List<CellRecord> deletedCellRecords);
+
+        string GetTemplateName(string documentName);
+
+        DateTime GetDate(string documentName);
     }
 }

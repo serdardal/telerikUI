@@ -14,6 +14,12 @@ namespace WebApplication1.Data
             Database.EnsureCreated();
         }
 
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<CellRecord>()
+                .HasIndex(p => new { p.RowIndex, p.ColumnIndex, p.FileName }).IsUnique();
+        }
+
         public DbSet<CellRecord> CellRecords { get; set; }
     }
 }

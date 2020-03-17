@@ -23,9 +23,62 @@ namespace WebApplication1.Services
             return true;
         }
 
-        public Task<bool> UpdateCellsAsync(List<CellRecord> cellRecords)
+        public DateTime GetDate(string documentName)
         {
-            throw new NotImplementedException();
+            CellRecord record = _dataContext.CellRecords.FirstOrDefault(x => x.FileName == documentName);
+            return record.Date;
+        }
+
+        public string GetTemplateName(string documentName)
+        {
+            CellRecord record = _dataContext.CellRecords.FirstOrDefault(x => x.FileName == documentName);
+            return record.TemplateName;
+        }
+
+        public async Task<bool> UpdateCellsAsync(List<CellRecord> addedCellRecords, List<CellRecord> changedCellRecords, List<CellRecord> deletedCellRecords)
+        {
+            if(addedCellRecords.Count > 0)
+            {
+                await _dataContext.CellRecords.AddRangeAsync(addedCellRecords);
+            }
+
+            if (changedCellRecords.Count > 0)
+            {
+                foreach (CellRecord changedRecord in changedCellRecords)
+                {
+                    var entity = _dataContext.CellRecords.FirstOrDefault(item => 
+                        item.RowIndex == changedRecord.RowIndex 
+                        && item.ColumnIndex == changedRecord.ColumnIndex
+                        && item.FileName == changedRecord.FileName);
+
+                    if(entity != null)
+                    {
+                        entity.Data = changedRecord.Data;
+                        _dataContext.CellRecords.Update(entity);
+                    }
+                }
+                
+            }
+
+            if(deletedCellRecords.Count > 0)
+            {
+                foreach (CellRecord deletedRecord in deletedCellRecords)
+                {
+                    var entity = _dataContext.CellRecords.FirstOrDefault(item =>
+                        item.RowIndex == deletedRecord.RowIndex
+                        && item.ColumnIndex == deletedRecord.ColumnIndex
+                        && item.FileName == deletedRecord.FileName);
+
+                    if (entity != null)
+                    {
+                        _dataContext.CellRecords.Remove(entity);
+                    }
+                }
+            }
+
+
+            await _dataContext.SaveChangesAsync();
+            return true;
         }
     }
 }

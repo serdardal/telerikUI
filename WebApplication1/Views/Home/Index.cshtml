@@ -24,7 +24,7 @@
                 <label>Date:</label>
                 <input type="date" id="dateInput" data-date-format="DD MMMM YYYY">
             </div>
-            <button onclick="handleSaveButoon()" style="margin-left: 10px" id="saveButton">Save</button>
+            <button onclick="handleSaveButton()" style="margin-left: 10px" id="saveButton">Save</button>
             <button onclick="handleUpdateButton()" style="margin-left: 10px" id="updateButton" hidden>Update</button>
             <div id="spreadsheet" style="float:left; width:100%"></div>
         </div>
@@ -79,28 +79,43 @@
             data: JSON.stringify(data),
             success: function (datas) {
 
-                cells = datas;
+                cells = datas.dataCells;
 
                 var sheetList = spread.sheets();
-                var sheet = sheetList[0];
 
-                for (var i = 0; i < datas.length; i++) {
-                    var range = sheet.range(datas[i].rowIndex-1, datas[i].columnIndex-1)
-                    range.enable(true);
+                for (var k = 0; k < sheetList.length; k++) {
+                    var cellList = datas.dataCells[k].cellList;
+                    var sheet = sheetList[k];
+
+                    for (var i = 0; i < cellList.length; i++) {
+                        var range = sheet.range(cellList[i].rowIndex-1, cellList[i].columnIndex-1)
+                        range.enable(true);
+                    }
                 }
+
+                for (var k = 0; k < sheetList.length; k++) {
+                    var cellList = datas.onlyUnlockCells[k].cellList;
+                    var sheet = sheetList[k];
+
+                    for (var i = 0; i < cellList.length; i++) {
+                        var range = sheet.range(cellList[i].rowIndex-1, cellList[i].columnIndex-1)
+                        range.enable(true);
+                    }
+                }
+                
             }
         })
 
     }
 
-    function handleSaveButoon() {
-        var filledCells = findFilledCells();
+    function handleSaveButton() {
+        var changedCells = findChangedCells();
 
         var data = {
             templateName: currentDocumentName,
             documentName: $("#nameInput").val(),
             date: $("#dateInput").val(),
-            cellList: filledCells
+            tableList: changedCells.filledCells
         }
 
         $.ajax({
@@ -112,11 +127,13 @@
     }
 
     function handleUpdateButton() {
-        var filledCells = findFilledCells();
+        var changedCells = findChangedCells();
 
         var data = {
             documentName: $("#nameInput").val(),
-            cellList: filledCells
+            filledTableList: changedCells.filledCells,
+            changedTableList: changedCells.changedCells,
+            emptiedTableList: changedCells.emptiedCells
         }
 
         $.ajax({
@@ -127,25 +144,65 @@
         })
     }
 
-    function findFilledCells() {
+    function findChangedCells() {
         var sheetList = spread.sheets();
-        var sheet = sheetList[0];
-
+        
         var filledCells = [];
+        var changedCells = [];
+        var emptiedCells = [];
 
-        for (var i = 0; i < cells.length; i++) {
-            var range = sheet.range(cells[i].rowIndex - 1, cells[i].columnIndex - 1)
-            var value = range.values()[0][0];
+        for (var k = 0; k < sheetList.length; k++) {
+            var sheet = sheetList[k];
+            var cellList = cells[k].cellList;
 
-            if (value !== null)
-                filledCells.push({
-                rowIndex: cells[i].rowIndex,
-                columnIndex: cells[i].columnIndex,
-                value: value
-                })
-        }
+            filledCells.push({
+                TableIndex: k,
+                cellList: []
+            });
 
-        return filledCells;
+            changedCells.push({
+                TableIndex: k,
+                cellList: []
+            });
+
+            emptiedCells.push({
+                TableIndex: k,
+                cellList: []
+            });
+
+            for (var i = 0; i < cellList.length; i++) {
+                var range = sheet.range(cellList[i].rowIndex - 1, cellList[i].columnIndex - 1)
+                var value = range.values()[0][0];
+
+                if (value !== null) { //may be filled or changed
+                    if (cellList[i].value == null) { //old value was null so filled
+                        filledCells[k].cellList.push({
+                            rowIndex: cellList[i].rowIndex,
+                            columnIndex: cellList[i].columnIndex,
+                            value: value
+                        });
+                    } else if (value !== cellList[i].value) { //value changed
+                        changedCells[k].cellList.push({
+                            rowIndex: cellList[i].rowIndex,
+                            columnIndex: cellList[i].columnIndex,
+                            value: value
+                        });
+                    }
+                    
+                } else { //may be emptied
+                    if (cellList[i].value !== null) { //old value wasn't null so emptied
+                        emptiedCells[k].cellList.push({
+                            rowIndex: cellList[i].rowIndex,
+                            columnIndex: cellList[i].columnIndex,
+                            value: value
+                        });
+                    }
+                }
+                    
+            }
+        }    
+
+        return { filledCells: filledCells, changedCells: changedCells, emptiedCells: emptiedCells };
     }
 
     function loadTemplateNames(names) {

@@ -10,6 +10,10 @@ namespace WebApplication1.Models.Contracts
     {
         public string DocumentName { get; set; }
 
-        public List<FilledCellModel> CellList { get; set; }
+        public List<FilledTableModel> FilledTableList { get; set; }
+
+        public List<FilledTableModel> ChangedTableList { get; set; }
+
+        public List<FilledTableModel> EmptiedTableList { get; set; }
     }
 }
