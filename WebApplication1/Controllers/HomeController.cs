@@ -40,8 +40,28 @@ namespace Deneme.Controllers
         [HttpGet("Home/GetSavedFileByName/{docName}")]
         public string GetSavedFileByName(string docName)
         {
-            string path = Path.Combine(Directory.GetCurrentDirectory(), "Saves", docName);
-            byte[] fileByteArray = System.IO.File.ReadAllBytes(path);
+            string templateName = _excelService.GetTemplateName(docName);
+            string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
+
+            byte[] fileByteArray = { };
+
+            List<CellRecord> cells = _excelService.GetCellRecordsByDocName(docName);
+
+            FileInfo fi = new FileInfo(templatePath);
+            using (ExcelPackage excelPackage = new ExcelPackage(fi))
+            {
+                ExcelWorkbook excelWorkBook = excelPackage.Workbook;
+                
+                foreach (CellRecord cell in cells)
+                {
+                    ExcelWorksheet worksheet = excelWorkBook.Worksheets[cell.TableIndex];
+
+                    worksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
+                }
+
+                fileByteArray = excelPackage.GetAsByteArray();
+            }
+            
             string file = Convert.ToBase64String(fileByteArray);
             return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
         }

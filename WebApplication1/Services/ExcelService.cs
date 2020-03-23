@@ -23,6 +23,13 @@ namespace WebApplication1.Services
             return true;
         }
 
+        public List<CellRecord> GetCellRecordsByDocName(string docName)
+        {
+            List<CellRecord> cells = _dataContext.CellRecords.Where(x => x.FileName == docName).ToList();
+
+            return cells;
+        }
+
         public DateTime GetDate(string documentName)
         {
             CellRecord record = _dataContext.CellRecords.FirstOrDefault(x => x.FileName == documentName);
