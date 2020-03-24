@@ -1,0 +1,232 @@
+﻿
+@{
+    ViewData["Title"] = "Index";
+}
+
+    <div style="margin-top:10px">
+        <div id="controlBox" style="width:19%; height:100vh; float:left">
+            <select id="templateNames" style="width: 100%; height: 35%; overflow-x: auto" multiple>
+            </select>
+            <button id="selectTemplate" onclick="handleSelectTemplate()">Open Template</button>
+
+            <hr />
+
+            <select id="savedFileNames" style="width:100%; height:35%; overflow-x:auto" multiple>
+            </select>
+            <button id="selectSavedFile" onclick="handleSelectSavedFile()">Open Saved File</button>
+            <label>Readonly:</label>
+            <input type="checkbox" checked id="readonlyCheckbox" />
+        </div>
+        <div style="width:80%; float:left">
+            <div style="float:left; margin-left:10px">
+                <label>Name:</label>
+                <input type="text" id="nameInput">
+            </div>
+            <div style="float:left; margin-left:10px">
+                <label>Date:</label>
+                <input type="date" id="dateInput" data-date-format="DD MMMM YYYY">
+            </div>
+            <button onclick="handleSaveButton()" style="margin-left: 10px" id="saveButton">Save</button>
+            <button onclick="handleUpdateButton()" style="margin-left: 10px" id="updateButton" hidden>Update</button>
+            <div id="spreadsheet" style="float:left; width:100%"></div>
+        </div>
+    </div>
+
+<script>
+    $("#spreadsheet").kendoSpreadsheet({
+        render: function (e) {
+            var height = window.innerHeight;
+            e.sender.element.innerHeight(height-100);
+        },
+        excelExport: function (e) {
+            e.workbook.fileName = "Spreadsheet1.xlsx";
+        },
+    });
+    var spread = $('#spreadsheet').getKendoSpreadsheet();
+    var cells;
+    var currentDocumentName;
+
+    $.ajax({
+        url: '/SecondPage/GetTemplateNames',
+        method: "get",
+        success: function (data) {
+            loadTemplateNames(data)
+        }
+    })
+
+    function loadTemplateNames(names) {
+        names.map((name) => {
+            var option = document.createElement("option");
+            option.text = name;
+            $('#templateNames').append(option);
+        })
+    }
+
+    function handleSelectTemplate() {
+        var selected = $('#templateNames option:selected').val()
+        openTemplate(selected);
+    }
+
+    function openTemplate(name) {
+        $.ajax({
+            url: '/SecondPage/GetTemplateByName/'+name,
+            method: "get",
+            success: function (data) {
+                spread.fromFile(b64toBlob(data)).then(() => lockAllCells()).then(() => unlockCells(name,true));
+            }
+        })
+
+        currentDocumentName = name;
+
+        $('#nameInput').val("");
+        $('#nameInput').prop('disabled', false);
+
+        $('#dateInput').prop('disabled', false);
+
+        $('#saveButton').show()
+        $('#updateButton').hide()
+    }
+
+    function b64toBlob(dataURI) {
+	    var byteString = atob(dataURI.split(',')[1]);
+	    var ab = new ArrayBuffer(byteString.length);
+	    var ia = new Uint8Array(ab);
+
+	    for (var i = 0; i < byteString.length; i++) {
+		    ia[i] = byteString.charCodeAt(i);
+	    }
+
+	    return new Blob([ab], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    }
+
+    function lockAllCells() {
+        var sheetList = spread.sheets();
+        for (var i = 0; i < sheetList.length; i++) {
+            var sheet = sheetList[i];
+            var range = sheet.range("A1:AX200");
+            range.enable(false);
+        }
+
+    }
+
+    function unlockCells(docName, isTemplate) {
+        var data = { documentName: docName, isTemplate: isTemplate };
+
+        $.ajax({
+            url: '/SecondPage/GetUnlockedCells/',
+            method: "post",
+            contentType: "application/json",
+            data: JSON.stringify(data),
+            success: function (datas) {
+
+                cells = datas.dataCells;
+
+                var sheetList = spread.sheets();
+
+                for (var k = 0; k < sheetList.length; k++) {
+                    var cellList = datas.dataCells[k].cellList;
+                    var sheet = sheetList[k];
+
+                    for (var i = 0; i < cellList.length; i++) {
+                        var range = sheet.range(cellList[i].rowIndex-1, cellList[i].columnIndex-1)
+                        range.enable(true);
+                    }
+                }
+
+                for (var k = 0; k < sheetList.length; k++) {
+                    var cellList = datas.onlyUnlockCells[k].cellList;
+                    var sheet = sheetList[k];
+
+                    for (var i = 0; i < cellList.length; i++) {
+                        var range = sheet.range(cellList[i].rowIndex-1, cellList[i].columnIndex-1)
+                        range.enable(true);
+                    }
+                }
+                
+            }
+        })
+
+    }
+
+    function handleSaveButton() {
+        var changedCells = findChangedCells();
+        var docName = currentDocumentName.replace(".xlsx","") + "_" + $("#nameInput").val() + "_" + $("#dateInput").val()
+
+        var data = {
+            templateName: currentDocumentName,
+            documentName: docName,
+            date: $("#dateInput").val(),
+            tableList: changedCells.filledCells
+        }
+
+        $.ajax({
+            url: '/SecondPage/WriteToDatabase',
+            method: "post",
+            contentType: "application/json",
+            data: JSON.stringify(data)
+        })
+    }
+
+    function findChangedCells() {
+        var sheetList = spread.sheets();
+        
+        var filledCells = [];
+        var changedCells = [];
+        var emptiedCells = [];
+
+        for (var k = 0; k < sheetList.length; k++) {
+            var sheet = sheetList[k];
+            var cellList = cells[k].cellList;
+
+            filledCells.push({
+                TableIndex: k,
+                cellList: []
+            });
+
+            changedCells.push({
+                TableIndex: k,
+                cellList: []
+            });
+
+            emptiedCells.push({
+                TableIndex: k,
+                cellList: []
+            });
+
+            for (var i = 0; i < cellList.length; i++) {
+                var range = sheet.range(cellList[i].rowIndex - 1, cellList[i].columnIndex - 1)
+                var value = range.values()[0][0];
+
+                if (value !== null) { //may be filled or changed
+                    if (cellList[i].value == null) { //old value was null so filled
+                        filledCells[k].cellList.push({
+                            rowIndex: cellList[i].rowIndex,
+                            columnIndex: cellList[i].columnIndex,
+                            value: value
+                        });
+                    } else if (value !== cellList[i].value) { //value changed
+                        changedCells[k].cellList.push({
+                            rowIndex: cellList[i].rowIndex,
+                            columnIndex: cellList[i].columnIndex,
+                            value: value
+                        });
+                    }
+                    
+                } else { //may be emptied
+                    if (cellList[i].value !== null) { //old value wasn't null so emptied
+                        emptiedCells[k].cellList.push({
+                            rowIndex: cellList[i].rowIndex,
+                            columnIndex: cellList[i].columnIndex,
+                            value: value
+                        });
+                    }
+                }
+                    
+            }
+        }    
+
+        return { filledCells: filledCells, changedCells: changedCells, emptiedCells: emptiedCells };
+    }
+
+</script>
+
