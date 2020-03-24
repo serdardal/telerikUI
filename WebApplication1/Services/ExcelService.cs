@@ -23,10 +23,24 @@ namespace WebApplication1.Services
             return true;
         }
 
+        public List<CellRecord> GetCellRecordsByDocName(string docName)
+        {
+            List<CellRecord> cells = _dataContext.CellRecords.Where(x => x.FileName == docName).ToList();
+
+            return cells;
+        }
+
         public DateTime GetDate(string documentName)
         {
             CellRecord record = _dataContext.CellRecords.FirstOrDefault(x => x.FileName == documentName);
             return record.Date;
+        }
+
+        public List<string> GetSavedFileNames()
+        {
+            List<string> fileNames = _dataContext.CellRecords.Select(c => c.FileName).Distinct().ToList();
+
+            return fileNames;
         }
 
         public string GetTemplateName(string documentName)
@@ -49,7 +63,8 @@ namespace WebApplication1.Services
                     var entity = _dataContext.CellRecords.FirstOrDefault(item => 
                         item.RowIndex == changedRecord.RowIndex 
                         && item.ColumnIndex == changedRecord.ColumnIndex
-                        && item.FileName == changedRecord.FileName);
+                        && item.FileName == changedRecord.FileName
+                        && item.TableIndex == changedRecord.TableIndex);
 
                     if(entity != null)
                     {
@@ -67,7 +82,8 @@ namespace WebApplication1.Services
                     var entity = _dataContext.CellRecords.FirstOrDefault(item =>
                         item.RowIndex == deletedRecord.RowIndex
                         && item.ColumnIndex == deletedRecord.ColumnIndex
-                        && item.FileName == deletedRecord.FileName);
+                        && item.FileName == deletedRecord.FileName
+                        && item.TableIndex == deletedRecord.TableIndex);
 
                     if (entity != null)
                     {

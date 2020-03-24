@@ -54,6 +54,14 @@
         }
     })
 
+    $.ajax({
+        url: '/SecondPage/GetSavedFileNamesFromDB',
+        method: "get",
+        success: function (data) {
+            loadSavedFileNames(data)
+        }
+    })
+
     function loadTemplateNames(names) {
         names.map((name) => {
             var option = document.createElement("option");
@@ -62,9 +70,27 @@
         })
     }
 
+    function loadSavedFileNames(names) {
+        names.map((name) => {
+            var option = document.createElement("option");
+            option.text = name;
+            $('#savedFileNames').append(option);
+        })
+    }
+
     function handleSelectTemplate() {
         var selected = $('#templateNames option:selected').val()
         openTemplate(selected);
+    }
+
+    function handleSelectSavedFile() {
+        var readonly = $("#readonlyCheckbox").is(":checked")
+        var selected = $('#savedFileNames option:selected').val()
+        if (readonly) {
+            openSavedFileReadOnly(selected)
+        } else {
+            openSavedFileEditMode(selected)
+        }
     }
 
     function openTemplate(name) {
@@ -85,6 +111,42 @@
 
         $('#saveButton').show()
         $('#updateButton').hide()
+    }
+
+    function openSavedFileReadOnly(name) {
+        $.ajax({
+            url: '/SecondPage/GetSavedFileByName/'+name,
+            method: "get",
+            success: function (data) {
+                spread.fromFile(b64toBlob(data)).then(() => lockAllCells());
+            }
+        })
+
+        $('#nameInput').val(name);
+        $('#nameInput').prop('disabled', true);
+
+        $('#dateInput').prop('disabled', true);
+
+        $('#saveButton').hide()
+        $('#updateButton').hide()
+    }
+
+    function openSavedFileEditMode(name) {
+        $.ajax({
+            url: '/SecondPage/GetSavedFileByName/'+name,
+            method: "get",
+            success: function (data) {
+                spread.fromFile(b64toBlob(data)).then(() => lockAllCells()).then(() => unlockCells(name,false));
+            }
+        })
+
+        $('#nameInput').val(name);
+        $('#nameInput').prop('disabled', true);
+
+        $('#dateInput').prop('disabled', true);
+
+        $('#saveButton').hide()
+        $('#updateButton').show()
     }
 
     function b64toBlob(dataURI) {
@@ -161,6 +223,24 @@
 
         $.ajax({
             url: '/SecondPage/WriteToDatabase',
+            method: "post",
+            contentType: "application/json",
+            data: JSON.stringify(data)
+        })
+    }
+
+    function handleUpdateButton() {
+        var changedCells = findChangedCells();
+
+        var data = {
+            documentName: $("#nameInput").val(),
+            filledTableList: changedCells.filledCells,
+            changedTableList: changedCells.changedCells,
+            emptiedTableList: changedCells.emptiedCells
+        }
+
+        $.ajax({
+            url: '/SecondPage/UpdateExistingFile',
             method: "post",
             contentType: "application/json",
             data: JSON.stringify(data)

@@ -15,5 +15,9 @@ namespace WebApplication1.Services
         string GetTemplateName(string documentName);
 
         DateTime GetDate(string documentName);
+
+        List<CellRecord> GetCellRecordsByDocName(string docName);
+
+        List<string> GetSavedFileNames();
     }
 }
