@@ -3,8 +3,8 @@
     ViewData["Title"] = "Index";
 }
 
-    <div style="margin-top:10px">
-        <div id="controlBox" style="width:19%; height:100vh; float:left">
+    <div style="margin-top:10px; height:100vh;">
+        <div id="controlBox" style="width:19%; height:100%; float:left">
             <select id="templateNames" style="width: 100%; height: 35%; overflow-x: auto" multiple>
             </select>
             <button id="selectTemplate" onclick="handleSelectTemplate()">Open Template</button>
@@ -30,6 +30,13 @@
             <button onclick="handleUpdateButton()" style="margin-left: 10px" id="updateButton" hidden>Update</button>
             <div id="spreadsheet" style="float:left; width:100%"></div>
         </div>
+    </div>
+    <div style="margin-top:10px">
+        <p>Kaydete basıldığında açılan tablodaki hücre bazında değişiklikler backende gönderilir.</p>
+        <p>Kayıt edilen dosyaların isimleri databaseden çekilir.</p>
+        <p>Saves klasörü artık kullanılmıyor. Değişiklikler database e kaydedilir.</p>
+        <p>Kayıt edilen bir dosya açıldığında databasedeki veriler ile dosyanın şablonu birleştirilerek ekranda gösterilir.</p>
+        <p>Update yapıldığında hücre bazında değişiklikler backende gönderilir ve databasede update edilir.</p>
     </div>
 
 <script>
