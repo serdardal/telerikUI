@@ -36,6 +36,13 @@ namespace WebApplication1.Services
             return record.Date;
         }
 
+        public List<string> GetSavedFileNames()
+        {
+            List<string> fileNames = _dataContext.CellRecords.Select(c => c.FileName).Distinct().ToList();
+
+            return fileNames;
+        }
+
         public string GetTemplateName(string documentName)
         {
             CellRecord record = _dataContext.CellRecords.FirstOrDefault(x => x.FileName == documentName);

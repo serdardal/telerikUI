@@ -87,6 +87,13 @@ namespace Deneme.Controllers
             return Ok(excelFiles);
         }
 
+        [HttpGet]
+        public IActionResult GetSavedFileNamesFromDB()
+        {
+            List<string> fileNames = _excelService.GetSavedFileNames();
+            return Ok(fileNames);
+        }
+
         [HttpPost]
         public IActionResult GetUnlockedCells([FromBody] CellUnlockModel model)
         {

@@ -8,12 +8,13 @@
             <button id="selectTemplate" onclick="handleSelectTemplate()">Open Template</button>
 
             <hr />
-
+            <label>LoadNamesFromDB:</label>
+            <input type="checkbox" onclick="handleLoadFromDBClick(this);" id="loadFromDBCheckbox" />
             <select id="savedFileNames" style="width:100%; height:35%; overflow-x:auto" multiple>
             </select>
             <button id="selectSavedFile" onclick="handleSelectSavedFile()">Open Saved File</button>
             <label>Readonly:</label>
-            <input type="checkbox" checked id="readonlyCheckbox"/>
+            <input type="checkbox" checked id="readonlyCheckbox" />
         </div>
         <div style="width:80%; float:left">
             <div style="float:left; margin-left:10px">
@@ -214,6 +215,8 @@
     }
 
     function loadSavedFileNames(names) {
+        $("#savedFileNames").empty();
+
         names.map((name) => {
             var option = document.createElement("option");
             option.text = name;
@@ -294,20 +297,42 @@
     }
 
     $.ajax({
-        url: 'Home/GetTemplateNames',
+        url: '/Home/GetTemplateNames',
         method: "get",
         success: function (data) {
             loadTemplateNames(data)
         }
     })
 
-    $.ajax({
-        url: 'Home/GetSavedFileNames',
-        method: "get",
-        success: function (data) {
-            loadSavedFileNames(data)
+    function loadSavedFileNamesFromFolder() {
+        $.ajax({
+            url: '/Home/GetSavedFileNames',
+            method: "get",
+            success: function (data) {
+                loadSavedFileNames(data)
+            }
+        })
+    }
+
+    function loadSavedFilesFromDB() {
+        $.ajax({
+            url: '/Home/GetSavedFileNamesFromDB',
+            method: "get",
+            success: function (data) {
+                loadSavedFileNames(data)
+            }
+        })
+    }
+
+    function handleLoadFromDBClick(cb) {
+        if (cb.checked) {
+            loadSavedFilesFromDB()
+        } else {
+            loadSavedFileNamesFromFolder();
         }
-    })
+    }
+
+    loadSavedFileNamesFromFolder();
 
 </script>
 

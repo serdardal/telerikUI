@@ -17,5 +17,7 @@ namespace WebApplication1.Services
         DateTime GetDate(string documentName);
 
         List<CellRecord> GetCellRecordsByDocName(string docName);
+
+        List<string> GetSavedFileNames();
     }
 }
