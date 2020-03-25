@@ -63,8 +63,7 @@ namespace WebApplication1.Services
                     var entity = _dataContext.CellRecords.FirstOrDefault(item => 
                         item.RowIndex == changedRecord.RowIndex 
                         && item.ColumnIndex == changedRecord.ColumnIndex
-                        && item.FileName == changedRecord.FileName
-                        && item.TableIndex == changedRecord.TableIndex);
+                        && item.FileName == changedRecord.FileName);
 
                     if(entity != null)
                     {
@@ -82,8 +81,7 @@ namespace WebApplication1.Services
                     var entity = _dataContext.CellRecords.FirstOrDefault(item =>
                         item.RowIndex == deletedRecord.RowIndex
                         && item.ColumnIndex == deletedRecord.ColumnIndex
-                        && item.FileName == deletedRecord.FileName
-                        && item.TableIndex == deletedRecord.TableIndex);
+                        && item.FileName == deletedRecord.FileName);
 
                     if (entity != null)
                     {

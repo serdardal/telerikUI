@@ -40,10 +40,6 @@ namespace WebApplication1.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("RowIndex", "ColumnIndex", "FileName", "TableIndex")
-                        .IsUnique()
-                        .HasFilter("[FileName] IS NOT NULL");
-
                     b.ToTable("CellRecords");
                 });
 #pragma warning restore 612, 618
