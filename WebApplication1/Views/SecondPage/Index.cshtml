@@ -18,17 +18,20 @@
             <input type="checkbox" checked id="readonlyCheckbox" />
         </div>
         <div style="width:80%; float:left">
-            <div style="float:left; margin-left:10px">
-                <label>Name:</label>
-                <input type="text" id="nameInput">
+            <button onclick="exportProtected()" id="exportProtectedButton" hidden>Export Protected</button>
+            <div>
+                <div style="float:left; margin-left:10px">
+                    <label>Name:</label>
+                    <input type="text" id="nameInput">
+                </div>
+                <div style="float:left; margin-left:10px">
+                    <label>Date:</label>
+                    <input type="date" id="dateInput" data-date-format="DD MMMM YYYY">
+                </div>
+                <button onclick="handleSaveButton()" style="margin-left: 10px" id="saveButton">Save</button>
+                <button onclick="handleUpdateButton()" style="margin-left: 10px" id="updateButton" hidden>Update</button>
+                <div id="spreadsheet" style="float:left; width:100%"></div>
             </div>
-            <div style="float:left; margin-left:10px">
-                <label>Date:</label>
-                <input type="date" id="dateInput" data-date-format="DD MMMM YYYY">
-            </div>
-            <button onclick="handleSaveButton()" style="margin-left: 10px" id="saveButton">Save</button>
-            <button onclick="handleUpdateButton()" style="margin-left: 10px" id="updateButton" hidden>Update</button>
-            <div id="spreadsheet" style="float:left; width:100%"></div>
         </div>
     </div>
     <div style="margin-top:10px">
@@ -95,9 +98,19 @@
         var selected = $('#savedFileNames option:selected').val()
         if (readonly) {
             openSavedFileReadOnly(selected)
+            $('#updateButton').hide()
         } else {
             openSavedFileEditMode(selected)
+            $('#updateButton').show()
         }
+
+        $('#nameInput').val(selected);
+        $('#nameInput').prop('disabled', true);
+
+        $('#dateInput').prop('disabled', true);
+
+        $('#saveButton').hide()
+        $('#exportProtectedButton').show()
     }
 
     function openTemplate(name) {
@@ -118,6 +131,7 @@
 
         $('#saveButton').show()
         $('#updateButton').hide()
+        $('#exportProtectedButton').hide()
     }
 
     function openSavedFileReadOnly(name) {
@@ -128,14 +142,6 @@
                 spread.fromFile(b64toBlob(data)).then(() => lockAllCells());
             }
         })
-
-        $('#nameInput').val(name);
-        $('#nameInput').prop('disabled', true);
-
-        $('#dateInput').prop('disabled', true);
-
-        $('#saveButton').hide()
-        $('#updateButton').hide()
     }
 
     function openSavedFileEditMode(name) {
@@ -146,14 +152,6 @@
                 spread.fromFile(b64toBlob(data)).then(() => lockAllCells()).then(() => unlockCells(name,false));
             }
         })
-
-        $('#nameInput').val(name);
-        $('#nameInput').prop('disabled', true);
-
-        $('#dateInput').prop('disabled', true);
-
-        $('#saveButton').hide()
-        $('#updateButton').show()
     }
 
     function b64toBlob(dataURI) {
@@ -313,6 +311,20 @@
         }    
 
         return { filledCells: filledCells, changedCells: changedCells, emptiedCells: emptiedCells };
+    }
+
+    function exportProtected() {
+        var docName = $("#nameInput").val();
+        $.ajax({
+            url: '/SecondPage/GetProtectedSavedFileByName/' + docName,
+            method: "get",
+            success: function (data) {
+                const element = document.createElement('a');
+                element.download = docName;
+                element.href = URL.createObjectURL(b64toBlob(data));
+                element.click();
+            }
+        })
     }
 
 </script>

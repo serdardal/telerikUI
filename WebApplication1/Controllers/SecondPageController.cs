@@ -300,5 +300,40 @@ namespace WebApplication1.Controllers
 
             return excelPackage;
         }
+
+        [HttpGet("SecondPage/GetProtectedSavedFileByName/{docName}")]
+        public string GetProtectedSavedFileByName(string docName)
+        {
+            byte[] fileByteArray = { };
+
+            using (ExcelPackage excelPackage = GetSavedExcelPackageByName(docName))
+            {
+                ExcelWorksheets sheetList = excelPackage.Workbook.Worksheets;
+
+                foreach(ExcelWorksheet sheet in sheetList)
+                {
+                    sheet.Protection.SetPassword("bimar123");
+                    sheet.Protection.AllowEditObject = false;
+                    sheet.Protection.AllowEditScenarios = false;
+                    sheet.Protection.AllowDeleteColumns = false;
+                    sheet.Protection.AllowDeleteRows = false;
+                    sheet.Protection.AllowFormatCells = false;
+                    sheet.Protection.AllowFormatColumns = false;
+                    sheet.Protection.AllowFormatRows = false;
+                    sheet.Protection.AllowInsertColumns = false;
+                    sheet.Protection.AllowInsertHyperlinks = false;
+                    sheet.Protection.AllowInsertRows = false;
+                    sheet.Protection.AllowPivotTables = false;
+                    sheet.Protection.AllowSelectLockedCells = false;
+                    sheet.Protection.AllowSelectUnlockedCells = false;
+                    sheet.Protection.AllowSort = false;
+                }
+
+                fileByteArray = excelPackage.GetAsByteArray();
+            }
+
+            string file = Convert.ToBase64String(fileByteArray);
+            return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
+        }
     }
 }
