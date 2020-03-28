@@ -268,30 +268,37 @@ namespace WebApplication1.Controllers
         [HttpGet("SecondPage/GetSavedFileByName/{docName}")]
         public string GetSavedFileByName(string docName)
         {
-            string templateName = _excelService.GetTemplateName(docName);
-            string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
-
             byte[] fileByteArray = { };
 
-            List<CellRecord> cells = _excelService.GetCellRecordsByDocName(docName);
-
-            FileInfo fi = new FileInfo(templatePath);
-            using (ExcelPackage excelPackage = new ExcelPackage(fi))
+            using (ExcelPackage excelPackage = GetSavedExcelPackageByName(docName))
             {
-                ExcelWorkbook excelWorkBook = excelPackage.Workbook;
-
-                foreach (CellRecord cell in cells)
-                {
-                    ExcelWorksheet worksheet = excelWorkBook.Worksheets[cell.TableIndex];
-
-                    worksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
-                }
-
                 fileByteArray = excelPackage.GetAsByteArray();
             }
 
             string file = Convert.ToBase64String(fileByteArray);
             return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
+        }
+
+        public ExcelPackage GetSavedExcelPackageByName(string docName)
+        {
+            string templateName = _excelService.GetTemplateName(docName);
+            string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
+
+            List<CellRecord> cells = _excelService.GetCellRecordsByDocName(docName);
+
+            FileInfo fi = new FileInfo(templatePath);
+            ExcelPackage excelPackage = new ExcelPackage(fi);
+
+            ExcelWorkbook excelWorkBook = excelPackage.Workbook;
+
+            foreach (CellRecord cell in cells)
+            {
+                ExcelWorksheet worksheet = excelWorkBook.Worksheets[cell.TableIndex];
+
+                worksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
+            }
+
+            return excelPackage;
         }
     }
 }
