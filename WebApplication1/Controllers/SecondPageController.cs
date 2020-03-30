@@ -44,8 +44,7 @@ namespace WebApplication1.Controllers
             return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
         }
 
-        [HttpPost]
-        public IActionResult GetUnlockedCells([FromBody] CellUnlockModel model)
+        private UnlockResponseModel FindUnlockedCells(CellUnlockModel model)
         {
             string templateName = "";
             if (model.IsTemplate)
@@ -71,7 +70,7 @@ namespace WebApplication1.Controllers
                 {
                     List<CellRecord> savedCells = _excelService.GetCellRecordsByDocName(model.DocumentName);
 
-                    foreach(CellRecord cell in savedCells)
+                    foreach (CellRecord cell in savedCells)
                     {
                         var sheet = worksheetList[cell.TableIndex];
                         sheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
@@ -128,134 +127,189 @@ namespace WebApplication1.Controllers
 
 
             }
-            return Ok(new UnlockResponseModel { DataCells = dataCells, OnlyUnlockCells = onlyUnlockedCells });
+
+            return new UnlockResponseModel { DataCells = dataCells, OnlyUnlockCells = onlyUnlockedCells };
         }
 
         [HttpPost]
-        public async Task<IActionResult> WriteToDatabase([FromBody] FileSaveModel model)
+        public IActionResult GetUnlockedCells([FromBody] CellUnlockModel model)
         {
-            List<FilledTableModel> filledTables = model.TableList;
-            List<CellRecord> cellRecords = new List<CellRecord>();
+            UnlockResponseModel response = FindUnlockedCells(model);
+            return Ok(response);
+        }
 
+        public ActionResult SaveFileToTemp(string contentType, string base64, string fileName)
+        {
+            var fileContents = Convert.FromBase64String(base64);
+            System.IO.File.WriteAllBytes(Directory.GetCurrentDirectory() + $"\\Temp\\{fileName}.xlsx", fileContents);
 
-            for (int i = 0; i < filledTables.Count; i++)
+            SyncDataWithDB(fileName);
+
+            return View("Index");
+        }
+
+        private void SyncDataWithDB(string docName)
+        {
+            var cells = _excelService.GetCellRecordsByDocName(docName);
+            if(cells.Count > 0)// kayıt bulunuyor yani update işlemi
             {
-                FilledTableModel table = filledTables[i];
-                List<FilledCellModel> cells = table.CellList;
-
-                if (cells.Count > 0)
-                {
-                    foreach (FilledCellModel cell in cells)
-                    {
-                        cellRecords.Add(new CellRecord
-                        {
-                            RowIndex = cell.RowIndex,
-                            ColumnIndex = cell.ColumnIndex,
-                            Data = cell.Value,
-                            TableIndex = i,
-                            TemplateName = model.TemplateName,
-                            FileName = model.DocumentName,
-                            Date = model.Date
-                        });
-                    }
-
-
-                }
-
+                UpdateExistingFileInDB(docName);
             }
-
-            await _excelService.AddNewCellsAsync(cellRecords);
-
-            return Ok();
+            else // kayıt yok yani ekleme işlemi
+            {
+                AddNewRecordsToDB(docName);
+            }
         }
 
-        [HttpPost]
-        public async Task<IActionResult> UpdateExistingFile([FromBody] FileUpdateModel model)
+        private void UpdateExistingFileInDB(string docName)
         {
-            List<FilledTableModel> filledTables = model.FilledTableList;
-            List<FilledTableModel> changedTables = model.ChangedTableList;
-            List<FilledTableModel> emptiedTables = model.EmptiedTableList;
+            string templateName = FindTemplateNameFromFileName(docName);
+            DateTime date = FindDateFromFileName(docName);
+            List<UnlockedTableModel> dataTables = FindUnlockedCells(new CellUnlockModel { DocumentName = docName, IsTemplate = false }).DataCells;
 
-            //database e kaydetme
-            List<CellRecord> addedCellRecords = new List<CellRecord>();
+            List<CellRecord> newCellRecords = new List<CellRecord>();
             List<CellRecord> updatedCellRecords = new List<CellRecord>();
             List<CellRecord> deletedCellRecords = new List<CellRecord>();
 
-            string templateName = _excelService.GetTemplateName(model.DocumentName);
-            DateTime date = _excelService.GetDate(model.DocumentName);
-
-            for (int i = 0; i < filledTables.Count; i++)
+            string tempFilePath = Path.Combine(Directory.GetCurrentDirectory(), "Temp", docName + ".xlsx");
+            FileInfo fi = new FileInfo(tempFilePath);
+            using (ExcelPackage excelPackage = new ExcelPackage(fi))
             {
-                List<FilledCellModel> cells = filledTables[i].CellList;
+                ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
 
-                if (cells.Count > 0)
+                foreach (UnlockedTableModel table in dataTables)
                 {
-                    foreach (FilledCellModel cell in cells)
+                    ExcelWorksheet tempWorksheet = worksheetList[table.TableIndex];
+
+                    List<FilledCellModel> cellList = table.CellList;
+
+                    foreach (FilledCellModel cell in cellList)
                     {
-                        addedCellRecords.Add(new CellRecord
+                        var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value;
+
+                        if (tempCell != null) // eklenmiş veya update edilmiş olabilir
                         {
-                            RowIndex = cell.RowIndex,
-                            ColumnIndex = cell.ColumnIndex,
-                            Data = cell.Value,
-                            TableIndex = i,
-                            TemplateName = templateName,
-                            FileName = model.DocumentName,
-                            Date = date
-                        });
+                            string value = tempCell.ToString();
+
+                            if(cell.Value == null) //kayit yoksa yeni eklemiştir
+                            {
+                                newCellRecords.Add(new CellRecord
+                                {
+                                    RowIndex = cell.RowIndex,
+                                    ColumnIndex = cell.ColumnIndex,
+                                    Data = value,
+                                    TableIndex = table.TableIndex,
+                                    TemplateName = templateName,
+                                    FileName = docName,
+                                    Date = date
+                                });
+
+                            }else if (cell.Value != value) // kayıt var ve temptekinden farklıysa update edilmiştir.
+                            {
+                                updatedCellRecords.Add(new CellRecord
+                                {
+                                    RowIndex = cell.RowIndex,
+                                    ColumnIndex = cell.ColumnIndex,
+                                    Data = value,
+                                    TableIndex = table.TableIndex,
+                                    TemplateName = templateName,
+                                    FileName = docName,
+                                    Date = date
+                                });
+                            }
+
+                            
+                        }
+                        else // silinmiş olabilir.
+                        {
+                            if(cell.Value != null) // önceden kayıt varsa silinmiştir
+                            {
+                                deletedCellRecords.Add(new CellRecord
+                                {
+                                    RowIndex = cell.RowIndex,
+                                    ColumnIndex = cell.ColumnIndex,
+                                    Data = null,
+                                    TableIndex = table.TableIndex,
+                                    TemplateName = templateName,
+                                    FileName = docName,
+                                    Date = date
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            _excelService.UpdateCells(newCellRecords, updatedCellRecords, deletedCellRecords);
+        }
+
+        private void AddNewRecordsToDB(string docName)
+        {
+            string templateName = FindTemplateNameFromFileName(docName);
+            DateTime date = FindDateFromFileName(docName);
+            List<UnlockedTableModel> dataTables = FindUnlockedCells(new CellUnlockModel { DocumentName = templateName, IsTemplate = true }).DataCells;
+
+            List<CellRecord> newCellRecords = new List<CellRecord>();
+
+            string tempFilePath = Path.Combine(Directory.GetCurrentDirectory(), "Temp", docName + ".xlsx");
+            FileInfo fi = new FileInfo(tempFilePath);
+            using (ExcelPackage excelPackage = new ExcelPackage(fi))
+            {
+                ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
+
+                foreach(UnlockedTableModel table in dataTables)
+                {
+                    ExcelWorksheet tempWorksheet = worksheetList[table.TableIndex];
+
+                    List<FilledCellModel> cellList = table.CellList;
+
+                    foreach(FilledCellModel cell in cellList)
+                    {
+                        var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value;
+                        
+                        if (tempCell != null)
+                        {
+                            string value = tempCell.ToString();
+                            newCellRecords.Add(new CellRecord
+                            {
+                                RowIndex = cell.RowIndex,
+                                ColumnIndex = cell.ColumnIndex,
+                                Data = value,
+                                TableIndex = table.TableIndex,
+                                TemplateName = templateName,
+                                FileName = docName,
+                                Date = date
+                            });
+                        }
                     }
                 }
 
             }
 
-            for (int i = 0; i < changedTables.Count; i++)
+            _excelService.AddNewCells(newCellRecords);
+        }
+
+        private string FindTemplateNameFromFileName(string fileName)
+        {
+            List<string> templateNames = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "Forms"), "*.xlsx")
+                .Select(Path.GetFileName).ToList();
+
+            foreach (string template in templateNames)
             {
-                List<FilledCellModel> cells = changedTables[i].CellList;
+                string name = template.Replace(".xlsx", "");
 
-                if (cells.Count > 0)
+                if (fileName.StartsWith(name))
                 {
-                    foreach (FilledCellModel cell in cells)
-                    {
-                        updatedCellRecords.Add(new CellRecord
-                        {
-                            RowIndex = cell.RowIndex,
-                            ColumnIndex = cell.ColumnIndex,
-                            Data = cell.Value,
-                            TableIndex = i,
-                            TemplateName = templateName,
-                            FileName = model.DocumentName,
-                            Date = date
-                        });
-                    }
+                    return template;
                 }
-
             }
 
-            for (int i = 0; i < emptiedTables.Count; i++)
-            {
-                List<FilledCellModel> cells = emptiedTables[i].CellList;
+            return String.Empty;
+        }
 
-                if (cells.Count > 0)
-                {
-                    foreach (FilledCellModel cell in cells)
-                    {
-                        deletedCellRecords.Add(new CellRecord
-                        {
-                            RowIndex = cell.RowIndex,
-                            ColumnIndex = cell.ColumnIndex,
-                            Data = cell.Value,
-                            TableIndex = i,
-                            TemplateName = templateName,
-                            FileName = model.DocumentName,
-                            Date = date
-                        });
-                    }
-                }
-
-            }
-
-            await _excelService.UpdateCellsAsync(addedCellRecords, updatedCellRecords, deletedCellRecords);
-
-            return Ok();
+        private DateTime FindDateFromFileName(string fileName)
+        {
+            return DateTime.Parse(fileName.Substring(fileName.Length - 10, 10));
         }
 
         [HttpGet]
@@ -279,7 +333,7 @@ namespace WebApplication1.Controllers
             return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
         }
 
-        public ExcelPackage GetSavedExcelPackageByName(string docName)
+        private ExcelPackage GetSavedExcelPackageByName(string docName)
         {
             string templateName = _excelService.GetTemplateName(docName);
             string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);

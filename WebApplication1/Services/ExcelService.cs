@@ -15,6 +15,15 @@ namespace WebApplication1.Services
         {
             _dataContext = dataContext;
         }
+
+        public bool AddNewCells(List<CellRecord> cellRecords)
+        {
+            _dataContext.CellRecords.AddRange(cellRecords);
+            var added = _dataContext.SaveChanges();
+
+            return true;
+        }
+
         public async Task<bool> AddNewCellsAsync(List<CellRecord> cellRecords)
         {
             await _dataContext.CellRecords.AddRangeAsync(cellRecords);
@@ -25,7 +34,7 @@ namespace WebApplication1.Services
 
         public List<CellRecord> GetCellRecordsByDocName(string docName)
         {
-            List<CellRecord> cells = _dataContext.CellRecords.Where(x => x.FileName == docName).ToList();
+            var cells = _dataContext.CellRecords.Where(x => x.FileName == docName).ToList();
 
             return cells;
         }
@@ -47,6 +56,54 @@ namespace WebApplication1.Services
         {
             CellRecord record = _dataContext.CellRecords.FirstOrDefault(x => x.FileName == documentName);
             return record.TemplateName;
+        }
+
+        public bool UpdateCells(List<CellRecord> addedCellRecords, List<CellRecord> changedCellRecords, List<CellRecord> deletedCellRecords)
+        {
+            if (addedCellRecords.Count > 0)
+            {
+                _dataContext.CellRecords.AddRange(addedCellRecords);
+            }
+
+            if (changedCellRecords.Count > 0)
+            {
+                foreach (CellRecord changedRecord in changedCellRecords)
+                {
+                    var entity = _dataContext.CellRecords.FirstOrDefault(item =>
+                        item.RowIndex == changedRecord.RowIndex
+                        && item.ColumnIndex == changedRecord.ColumnIndex
+                        && item.FileName == changedRecord.FileName
+                        && item.TableIndex == changedRecord.TableIndex);
+
+                    if (entity != null)
+                    {
+                        entity.Data = changedRecord.Data;
+                        _dataContext.CellRecords.Update(entity);
+                    }
+                }
+
+            }
+
+            if (deletedCellRecords.Count > 0)
+            {
+                foreach (CellRecord deletedRecord in deletedCellRecords)
+                {
+                    var entity = _dataContext.CellRecords.FirstOrDefault(item =>
+                        item.RowIndex == deletedRecord.RowIndex
+                        && item.ColumnIndex == deletedRecord.ColumnIndex
+                        && item.FileName == deletedRecord.FileName
+                        && item.TableIndex == deletedRecord.TableIndex);
+
+                    if (entity != null)
+                    {
+                        _dataContext.CellRecords.Remove(entity);
+                    }
+                }
+            }
+
+
+            _dataContext.SaveChanges();
+            return true;
         }
 
         public async Task<bool> UpdateCellsAsync(List<CellRecord> addedCellRecords, List<CellRecord> changedCellRecords, List<CellRecord> deletedCellRecords)

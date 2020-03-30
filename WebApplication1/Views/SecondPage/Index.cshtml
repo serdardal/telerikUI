@@ -48,13 +48,21 @@
             var height = window.innerHeight;
             e.sender.element.innerHeight(height-100);
         },
+        excel: {
+            proxyURL: '@Url.Action("SaveFileToTemp", "SecondPage")',
+            forceProxy: true
+        },
         excelExport: function (e) {
-            e.workbook.fileName = "Spreadsheet1.xlsx";
+            var fileName = $("#nameInput").val();
+            if (currentTemplateName !== "") {
+                fileName = currentTemplateName.replace(".xlsx", "") + "_" + $("#nameInput").val() + "_" + $("#dateInput").val();
+            }
+            e.workbook.fileName = fileName;
         },
     });
     var spread = $('#spreadsheet').getKendoSpreadsheet();
     var cells;
-    var currentDocumentName;
+    var currentTemplateName;
 
     $.ajax({
         url: '/SecondPage/GetTemplateNames',
@@ -104,6 +112,8 @@
             $('#updateButton').show()
         }
 
+        currentTemplateName = "";
+
         $('#nameInput').val(selected);
         $('#nameInput').prop('disabled', true);
 
@@ -122,7 +132,7 @@
             }
         })
 
-        currentDocumentName = name;
+        currentTemplateName = name;
 
         $('#nameInput').val("");
         $('#nameInput').prop('disabled', false);
@@ -216,101 +226,11 @@
     }
 
     function handleSaveButton() {
-        var changedCells = findChangedCells();
-        var docName = currentDocumentName.replace(".xlsx","") + "_" + $("#nameInput").val() + "_" + $("#dateInput").val()
-
-        var data = {
-            templateName: currentDocumentName,
-            documentName: docName,
-            date: $("#dateInput").val(),
-            tableList: changedCells.filledCells
-        }
-
-        $.ajax({
-            url: '/SecondPage/WriteToDatabase',
-            method: "post",
-            contentType: "application/json",
-            data: JSON.stringify(data)
-        })
+        spread.saveAsExcel();
     }
 
     function handleUpdateButton() {
-        var changedCells = findChangedCells();
-
-        var data = {
-            documentName: $("#nameInput").val(),
-            filledTableList: changedCells.filledCells,
-            changedTableList: changedCells.changedCells,
-            emptiedTableList: changedCells.emptiedCells
-        }
-
-        $.ajax({
-            url: '/SecondPage/UpdateExistingFile',
-            method: "post",
-            contentType: "application/json",
-            data: JSON.stringify(data)
-        })
-    }
-
-    function findChangedCells() {
-        var sheetList = spread.sheets();
-        
-        var filledCells = [];
-        var changedCells = [];
-        var emptiedCells = [];
-
-        for (var k = 0; k < sheetList.length; k++) {
-            var sheet = sheetList[k];
-            var cellList = cells[k].cellList;
-
-            filledCells.push({
-                TableIndex: k,
-                cellList: []
-            });
-
-            changedCells.push({
-                TableIndex: k,
-                cellList: []
-            });
-
-            emptiedCells.push({
-                TableIndex: k,
-                cellList: []
-            });
-
-            for (var i = 0; i < cellList.length; i++) {
-                var range = sheet.range(cellList[i].rowIndex - 1, cellList[i].columnIndex - 1)
-                var value = range.values()[0][0];
-
-                if (value !== null) { //may be filled or changed
-                    if (cellList[i].value == null) { //old value was null so filled
-                        filledCells[k].cellList.push({
-                            rowIndex: cellList[i].rowIndex,
-                            columnIndex: cellList[i].columnIndex,
-                            value: value
-                        });
-                    } else if (value !== cellList[i].value) { //value changed
-                        changedCells[k].cellList.push({
-                            rowIndex: cellList[i].rowIndex,
-                            columnIndex: cellList[i].columnIndex,
-                            value: value
-                        });
-                    }
-                    
-                } else { //may be emptied
-                    if (cellList[i].value !== null) { //old value wasn't null so emptied
-                        emptiedCells[k].cellList.push({
-                            rowIndex: cellList[i].rowIndex,
-                            columnIndex: cellList[i].columnIndex,
-                            value: value
-                        });
-                    }
-                }
-                    
-            }
-        }    
-
-        return { filledCells: filledCells, changedCells: changedCells, emptiedCells: emptiedCells };
+        spread.saveAsExcel();
     }
 
     function exportProtected() {
