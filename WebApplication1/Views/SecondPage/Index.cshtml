@@ -233,7 +233,10 @@
     }
 
     function handleUpdateButton() {
-        spread.saveAsExcel();
+        var res = checkCells();
+        if (res) {
+            spread.saveAsExcel();
+        }
     }
 
     function exportProtected() {
