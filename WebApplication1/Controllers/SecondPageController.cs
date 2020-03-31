@@ -93,6 +93,7 @@ namespace WebApplication1.Controllers
             List<UnlockedTableModel> onlyUnlockedCells = new List<UnlockedTableModel>();
             List<UnlockedTableModel> notNullCells = new List<UnlockedTableModel>();
             List<UnlockedTableModel> shipParticularCells = new List<UnlockedTableModel>();
+            List<UnlockedTableModel> formulaCells = new List<UnlockedTableModel>();
 
             FileInfo fi = new FileInfo(path);
             using (ExcelPackage excelPackage = new ExcelPackage(fi))
@@ -109,6 +110,7 @@ namespace WebApplication1.Controllers
                     onlyUnlockedCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
                     notNullCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
                     shipParticularCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
+                    formulaCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
 
                     List<string> mergedCellList = currentWorksheet.MergedCells.ToList();
                     //kilitli olmayan ve merge edilmemiş hücreleri bulur ve listeye ekler
@@ -119,12 +121,20 @@ namespace WebApplication1.Controllers
                             var currentCell = currentWorksheet.Cells[i, j];
                             bool locked = currentCell.Style.Locked;
                             bool merged = currentCell.Merge;
+                            string formula = currentCell.Formula;
+
+                            if (formula != "")
+                            {
+                                var value = currentCell.Value;
+                                string format = currentCell.Style.Numberformat.Format;
+                                formulaCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
+                            }
 
                             if (!locked)
                             {
                                 var value = currentCell.Value;
                                 string format = currentCell.Style.Numberformat.Format;
-
+                                
                                 //not null cellerin belirlenmesi
                                 if (value != null && value.ToString() == "{NN}")
                                 {
@@ -139,6 +149,7 @@ namespace WebApplication1.Controllers
                                 {
                                     format = null;
                                 }
+                                
 
                                 if (!merged) //its data cell
                                 {
@@ -181,7 +192,7 @@ namespace WebApplication1.Controllers
 
             }
 
-            return new UnlockResponseModel { DataCells = dataCells, OnlyUnlockCells = onlyUnlockedCells, NotNullCells = notNullCells, ShipParticularCells=shipParticularCells };
+            return new UnlockResponseModel { DataCells = dataCells, OnlyUnlockCells = onlyUnlockedCells, NotNullCells = notNullCells, ShipParticularCells=shipParticularCells, FormulaCells=formulaCells };
         }
 
         [HttpPost]
@@ -300,7 +311,9 @@ namespace WebApplication1.Controllers
         {
             string templateName = FindTemplateNameFromFileName(docName);
             DateTime date = FindDateFromFileName(docName);
-            List<UnlockedTableModel> dataTables = FindUnlockedCells(new CellUnlockModel { DocumentName = templateName, IsTemplate = true }).DataCells;
+            UnlockResponseModel unlockResponseModel = FindUnlockedCells(new CellUnlockModel { DocumentName = templateName, IsTemplate = true });
+            List<UnlockedTableModel> dataTables = unlockResponseModel.DataCells;
+            List<UnlockedTableModel> formulaTables = unlockResponseModel.FormulaCells;
 
             List<CellRecord> newCellRecords = new List<CellRecord>();
 
@@ -329,6 +342,32 @@ namespace WebApplication1.Controllers
                                 ColumnIndex = cell.ColumnIndex,
                                 Data = value,
                                 TableIndex = table.TableIndex,
+                                TemplateName = templateName,
+                                FileName = docName,
+                                Date = date
+                            });
+                        }
+                    }
+                }
+
+                foreach(UnlockedTableModel formulaTable in formulaTables)
+                {
+                    ExcelWorksheet tempWorksheet = worksheetList[formulaTable.TableIndex];
+                    List<FilledCellModel> formulaCellList = formulaTable.CellList;
+
+                    foreach (FilledCellModel cell in formulaCellList)
+                    {
+                        var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value;
+
+                        if (tempCell != null)
+                        {
+                            string value = tempCell.ToString();
+                            newCellRecords.Add(new CellRecord
+                            {
+                                RowIndex = cell.RowIndex,
+                                ColumnIndex = cell.ColumnIndex,
+                                Data = value,
+                                TableIndex = formulaTable.TableIndex,
                                 TemplateName = templateName,
                                 FileName = docName,
                                 Date = date
