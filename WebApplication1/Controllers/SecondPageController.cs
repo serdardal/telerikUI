@@ -229,7 +229,15 @@ namespace WebApplication1.Controllers
         {
             string templateName = FindTemplateNameFromFileName(docName);
             DateTime date = FindDateFromFileName(docName);
-            List<UnlockedTableModel> dataTables = FindUnlockedCells(new CellUnlockModel { DocumentName = docName, IsTemplate = false }).DataCells;
+            UnlockResponseModel unlockResponseModel = FindUnlockedCells(new CellUnlockModel { DocumentName = docName, IsTemplate = false });
+            List<UnlockedTableModel> dataTables = unlockResponseModel.DataCells;
+            List<UnlockedTableModel> formulaTables = unlockResponseModel.FormulaCells;
+            foreach (UnlockedTableModel dataTable in dataTables)
+            {
+                UnlockedTableModel formulaTable = formulaTables[dataTable.TableIndex];
+
+                dataTable.CellList.AddRange(formulaTable.CellList);
+            }
 
             List<CellRecord> newCellRecords = new List<CellRecord>();
             List<CellRecord> updatedCellRecords = new List<CellRecord>();
@@ -440,8 +448,12 @@ namespace WebApplication1.Controllers
             foreach (CellRecord cell in cells)
             {
                 ExcelWorksheet worksheet = excelWorkBook.Worksheets[cell.TableIndex];
+                bool isFormulaCell = worksheet.Cells[cell.RowIndex, cell.ColumnIndex].Formula == "" ? false : true;
+                if (!isFormulaCell)
+                {
+                    worksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
 
-                worksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
+                }
             }
 
             return excelPackage;
