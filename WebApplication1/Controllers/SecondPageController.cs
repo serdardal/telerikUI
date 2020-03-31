@@ -229,6 +229,9 @@ namespace WebApplication1.Controllers
         {
             string templateName = FindTemplateNameFromFileName(docName);
             DateTime date = FindDateFromFileName(docName);
+
+            List<CellRecord> DBCellRecords = _excelService.GetCellRecordsByDocName(docName);
+
             UnlockResponseModel unlockResponseModel = FindUnlockedCells(new CellUnlockModel { DocumentName = docName, IsTemplate = false });
             List<UnlockedTableModel> dataTables = unlockResponseModel.DataCells;
             List<UnlockedTableModel> formulaTables = unlockResponseModel.FormulaCells;
@@ -249,67 +252,60 @@ namespace WebApplication1.Controllers
             {
                 ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
 
-                foreach (UnlockedTableModel table in dataTables)
+                foreach(CellRecord cellRecord in DBCellRecords)
+                {
+                    ExcelWorksheet tempWorksheet = worksheetList[cellRecord.TableIndex];
+                    var tempCell = tempWorksheet.Cells[cellRecord.RowIndex, cellRecord.ColumnIndex];
+                    //yeni değer nullse silinmiş
+                    if (tempCell.Value == null)
+                    {
+                        deletedCellRecords.Add(cellRecord);
+                        
+                    }
+                    // değer değiştiyse update edilmiş
+                    else if (tempCell.Value.ToString() != cellRecord.Data)
+                    {
+                        updatedCellRecords.Add(new CellRecord
+                        {
+                            RowIndex = cellRecord.RowIndex,
+                            ColumnIndex = cellRecord.ColumnIndex,
+                            Data = tempCell.Value.ToString(),
+                            TableIndex = cellRecord.TableIndex,
+                            TemplateName = templateName,
+                            FileName = docName,
+                            Date = date
+                        });
+
+                    }
+
+                    // kayıtlarda olanları listeden çıkarır,geriye yeni eklenme ihtimali olanlar kalır
+                    dataTables[cellRecord.TableIndex].CellList.RemoveAll(x => x.RowIndex == cellRecord.RowIndex && x.ColumnIndex == cellRecord.ColumnIndex);
+                }
+
+                foreach(UnlockedTableModel table in dataTables)
                 {
                     ExcelWorksheet tempWorksheet = worksheetList[table.TableIndex];
 
                     List<FilledCellModel> cellList = table.CellList;
-
-                    foreach (FilledCellModel cell in cellList)
+                    foreach(FilledCellModel cell in cellList)
                     {
-                        var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value;
-
-                        if (tempCell != null) // eklenmiş veya update edilmiş olabilir
+                        var value = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value;
+                        if (value != null)
                         {
-                            string value = tempCell.ToString();
-
-                            if(cell.Value == null) //kayit yoksa yeni eklemiştir
+                            newCellRecords.Add(new CellRecord
                             {
-                                newCellRecords.Add(new CellRecord
-                                {
-                                    RowIndex = cell.RowIndex,
-                                    ColumnIndex = cell.ColumnIndex,
-                                    Data = value,
-                                    TableIndex = table.TableIndex,
-                                    TemplateName = templateName,
-                                    FileName = docName,
-                                    Date = date
-                                });
-
-                            }else if (cell.Value != value) // kayıt var ve temptekinden farklıysa update edilmiştir.
-                            {
-                                updatedCellRecords.Add(new CellRecord
-                                {
-                                    RowIndex = cell.RowIndex,
-                                    ColumnIndex = cell.ColumnIndex,
-                                    Data = value,
-                                    TableIndex = table.TableIndex,
-                                    TemplateName = templateName,
-                                    FileName = docName,
-                                    Date = date
-                                });
-                            }
-
-                            
-                        }
-                        else // silinmiş olabilir.
-                        {
-                            if(cell.Value != null) // önceden kayıt varsa silinmiştir
-                            {
-                                deletedCellRecords.Add(new CellRecord
-                                {
-                                    RowIndex = cell.RowIndex,
-                                    ColumnIndex = cell.ColumnIndex,
-                                    Data = null,
-                                    TableIndex = table.TableIndex,
-                                    TemplateName = templateName,
-                                    FileName = docName,
-                                    Date = date
-                                });
-                            }
+                                RowIndex = cell.RowIndex,
+                                ColumnIndex = cell.ColumnIndex,
+                                Data = value.ToString(),
+                                TableIndex = table.TableIndex,
+                                TemplateName = templateName,
+                                FileName = docName,
+                                Date = date
+                            }); ;
                         }
                     }
                 }
+
             }
 
             _excelService.UpdateCells(newCellRecords, updatedCellRecords, deletedCellRecords);
