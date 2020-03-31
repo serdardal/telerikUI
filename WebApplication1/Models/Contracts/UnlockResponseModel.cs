@@ -11,5 +11,7 @@ namespace WebApplication1.Models.Contracts
         public List<UnlockedTableModel> DataCells { get; set; }
 
         public List<UnlockedTableModel> OnlyUnlockCells { get; set; }
+
+        public List<UnlockedTableModel> NotNullCells { get; set; }
     }
 }

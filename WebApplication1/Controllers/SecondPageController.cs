@@ -59,6 +59,7 @@ namespace WebApplication1.Controllers
             string path = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
             List<UnlockedTableModel> dataCells = new List<UnlockedTableModel>();
             List<UnlockedTableModel> onlyUnlockedCells = new List<UnlockedTableModel>();
+            List<UnlockedTableModel> notNullCells = new List<UnlockedTableModel>();
 
             FileInfo fi = new FileInfo(path);
             using (ExcelPackage excelPackage = new ExcelPackage(fi))
@@ -84,6 +85,7 @@ namespace WebApplication1.Controllers
 
                     dataCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
                     onlyUnlockedCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
+                    notNullCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
 
                     List<string> mergedCellList = currentWorksheet.MergedCells.ToList();
                     //kilitli olmayan ve merge edilmemiş hücreleri bulur ve listeye ekler
@@ -99,6 +101,11 @@ namespace WebApplication1.Controllers
                             {
                                 var value = currentCell.Value;
                                 string format = currentCell.Style.Numberformat.Format;
+
+                                if (value != null && value.ToString() == "{NN}")
+                                {
+                                    notNullCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
+                                }
                                 if(format == "General")
                                 {
                                     format = null;
@@ -133,7 +140,7 @@ namespace WebApplication1.Controllers
 
             }
 
-            return new UnlockResponseModel { DataCells = dataCells, OnlyUnlockCells = onlyUnlockedCells };
+            return new UnlockResponseModel { DataCells = dataCells, OnlyUnlockCells = onlyUnlockedCells, NotNullCells = notNullCells };
         }
 
         [HttpPost]

@@ -62,6 +62,7 @@
     });
     var spread = $('#spreadsheet').getKendoSpreadsheet();
     var cells;
+    var notNullCells;
     var currentTemplateName;
 
     $.ajax({
@@ -197,6 +198,7 @@
             success: function (datas) {
 
                 cells = datas.dataCells;
+                notNullCells = datas.notNullCells;
 
                 var sheetList = spread.sheets();
 
@@ -228,14 +230,14 @@
     function handleSaveButton() {
         var res = checkCells();
         if (res) {
-            spread.saveAsExcel();
+            //spread.saveAsExcel();
         }
     }
 
     function handleUpdateButton() {
         var res = checkCells();
         if (res) {
-            spread.saveAsExcel();
+            //spread.saveAsExcel();
         }
     }
 
@@ -265,11 +267,27 @@
             for (var j = 0; j < dataCellList.length; j++) {
                 var currentDataCell = dataCellList[j];
                 var currentSheetCellRange = sheet.range(currentDataCell.rowIndex - 1, currentDataCell.columnIndex - 1);
-                if (currentDataCell.format !== currentSheetCellRange.format()) {
-                    window.alert("Wrong cell format: row: " + currentDataCell.rowIndex + " column: "+ currentDataCell.columnIndex + " expected: " + currentDataCell.format + " found: "+ currentSheetCellRange.format())
+                if (currentDataCell.format !== null && currentDataCell.format !== currentSheetCellRange.format()) {
+                    window.alert("Wrong cell format: sheet: "+i+" row: " + currentDataCell.rowIndex + " column: "+ currentDataCell.columnIndex + " expected: " + currentDataCell.format + " found: "+ currentSheetCellRange.format())
                     return false;
                 }
+            }
+        }
 
+        for (var i = 0; i < notNullCells.length; i++) {
+            notNullTable = notNullCells[i];
+            notNullCellList = notNullTable.cellList;
+
+            var sheet = sheetList[i];
+
+            for (var j = 0; j < notNullCellList.length; j++) {
+                var currentNotNullCell = notNullCellList[j];
+                var currentSheetCellRange = sheet.range(currentNotNullCell.rowIndex - 1, currentNotNullCell.columnIndex - 1);
+
+                if (currentSheetCellRange.value() === null || currentSheetCellRange.value() === "{NN}") {
+                    window.alert("sheet: "+i+", (" + currentNotNullCell.rowIndex + "," + currentNotNullCell.columnIndex + ") cannot be empty!");
+                    return false;
+                }
             }
         }
 
