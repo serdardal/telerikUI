@@ -8,5 +8,7 @@ namespace Deneme.Models
     public class FilledCellModel : CellBase
     {
         public string Value { get; set; }
+
+        public string Format { get; set; }
     }
 }

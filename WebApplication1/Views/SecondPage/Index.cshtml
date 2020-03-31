@@ -226,7 +226,10 @@
     }
 
     function handleSaveButton() {
-        spread.saveAsExcel();
+        var res = checkCells();
+        if (res) {
+            //spread.saveAsExcel();
+        }
     }
 
     function handleUpdateButton() {
@@ -245,6 +248,29 @@
                 element.click();
             }
         })
+    }
+
+    function checkCells() {
+        var sheetList = spread.sheets();
+
+        for (var i = 0; i < cells.length; i++) {
+            var dataTable = cells[i];
+            var dataCellList = dataTable.cellList;
+
+            var sheet = sheetList[i];
+
+            for (var j = 0; j < dataCellList.length; j++) {
+                var currentDataCell = dataCellList[j];
+                var currentSheetCellRange = sheet.range(currentDataCell.rowIndex - 1, currentDataCell.columnIndex - 1);
+                if (currentDataCell.format !== currentSheetCellRange.format()) {
+                    window.alert("Wrong cell format: row: " + currentDataCell.rowIndex + " column: "+ currentDataCell.columnIndex + " expected: " + currentDataCell.format + " found: "+ currentSheetCellRange.format())
+                    return false;
+                }
+
+            }
+        }
+
+        return true;
     }
 
 </script>

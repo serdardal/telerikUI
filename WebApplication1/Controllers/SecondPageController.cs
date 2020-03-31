@@ -98,10 +98,15 @@ namespace WebApplication1.Controllers
                             if (!locked)
                             {
                                 var value = currentCell.Value;
+                                string format = currentCell.Style.Numberformat.Format;
+                                if(format == "General")
+                                {
+                                    format = null;
+                                }
 
                                 if (!merged) //its data cell
                                 {
-                                    dataCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString() });
+                                    dataCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
                                 }
                                 else
                                 {
@@ -111,11 +116,11 @@ namespace WebApplication1.Controllers
 
                                     if (masterCell.Start.Row == i && masterCell.Start.Column == j) //now we are in master cell so its data cell
                                     {
-                                        dataCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString() });
+                                        dataCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
                                     }
                                     else //its only unlock cell
                                     {
-                                        onlyUnlockedCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString() });
+                                        onlyUnlockedCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
                                     }
                                 }
 
