@@ -199,6 +199,7 @@
 
                 cells = datas.dataCells;
                 notNullCells = datas.notNullCells;
+                var shipParticularCells = datas.shipParticularCells;
 
                 var sheetList = spread.sheets();
 
@@ -221,23 +222,39 @@
                         range.enable(true);
                     }
                 }
+
+                lockShipParticularCells(shipParticularCells);
                 
             }
         })
 
     }
 
+    function lockShipParticularCells(shipParticularCells) {
+        var sheetList = spread.sheets();
+
+        for (var i = 0; i < sheetList.length; i++) {
+            var sheet = sheetList[i];
+            var shipParticularCellList = shipParticularCells[i].cellList;
+
+            for (var j = 0; j < shipParticularCellList.length; j++) {
+                var range = sheet.range(shipParticularCellList[j].rowIndex - 1, shipParticularCellList[j].columnIndex - 1)
+                range.enable(false);
+            }
+        }
+    }
+
     function handleSaveButton() {
         var res = checkCells();
         if (res) {
-            //spread.saveAsExcel();
+            spread.saveAsExcel();
         }
     }
 
     function handleUpdateButton() {
         var res = checkCells();
         if (res) {
-            //spread.saveAsExcel();
+            spread.saveAsExcel();
         }
     }
 

@@ -38,8 +38,40 @@ namespace WebApplication1.Controllers
         [HttpGet("SecondPage/GetTemplateByName/{docName}")]
         public string GetTemplateByName(string docName)
         {
-            string path = Path.Combine(Directory.GetCurrentDirectory(), "Forms", docName);
-            byte[] fileByteArray = System.IO.File.ReadAllBytes(path);
+            Dictionary<string, string> variableDictionary = new Dictionary<string, string>();
+            variableDictionary.Add("{VesselName}", "Jean Pierre A");
+            variableDictionary.Add("{BuilderNo}", "JP-01");
+            variableDictionary.Add("{SerialNo}", "SN-JP-000999");
+            variableDictionary.Add("{IMONo}", "9379351");
+            variableDictionary.Add("{Company}", "Arkas Holding");
+
+            UnlockResponseModel unlockResponseModel = FindUnlockedCells(new CellUnlockModel { DocumentName = docName, IsTemplate = true });
+            List<UnlockedTableModel> shipParticularCells = unlockResponseModel.ShipParticularCells;
+
+            byte[] fileByteArray = { };
+            using (ExcelPackage excelPackage = GetExcelPackageByTeplateName(docName))
+            {
+                ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
+
+                for (int i = 0; i < shipParticularCells.Count; i++)
+                {
+                    ExcelWorksheet templateWorksheet = worksheetList[i];
+                    UnlockedTableModel table = shipParticularCells[i];
+                    List<FilledCellModel> cellList = table.CellList;
+
+                    foreach (FilledCellModel cell in cellList)
+                    {
+                        string key = templateWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value.ToString();
+                        if (variableDictionary.ContainsKey(key))
+                        {
+                            templateWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = variableDictionary[key];
+                        }
+                    }
+                }
+
+                fileByteArray = excelPackage.GetAsByteArray();
+            }
+
             string file = Convert.ToBase64String(fileByteArray);
             return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
         }
@@ -60,24 +92,14 @@ namespace WebApplication1.Controllers
             List<UnlockedTableModel> dataCells = new List<UnlockedTableModel>();
             List<UnlockedTableModel> onlyUnlockedCells = new List<UnlockedTableModel>();
             List<UnlockedTableModel> notNullCells = new List<UnlockedTableModel>();
+            List<UnlockedTableModel> shipParticularCells = new List<UnlockedTableModel>();
 
             FileInfo fi = new FileInfo(path);
             using (ExcelPackage excelPackage = new ExcelPackage(fi))
             {
                 ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
 
-                //kayıt dosyasıysa önce cellerin içi doldurulur.
-                if (!model.IsTemplate)
-                {
-                    List<CellRecord> savedCells = _excelService.GetCellRecordsByDocName(model.DocumentName);
-
-                    foreach (CellRecord cell in savedCells)
-                    {
-                        var sheet = worksheetList[cell.TableIndex];
-                        sheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
-                    }
-                }
-
+               
                 //data ve unlock celleri bulur.
                 for (int k = 0; k < worksheetList.Count; k++)
                 {
@@ -86,6 +108,7 @@ namespace WebApplication1.Controllers
                     dataCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
                     onlyUnlockedCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
                     notNullCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
+                    shipParticularCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
 
                     List<string> mergedCellList = currentWorksheet.MergedCells.ToList();
                     //kilitli olmayan ve merge edilmemiş hücreleri bulur ve listeye ekler
@@ -102,11 +125,17 @@ namespace WebApplication1.Controllers
                                 var value = currentCell.Value;
                                 string format = currentCell.Style.Numberformat.Format;
 
+                                //not null cellerin belirlenmesi
                                 if (value != null && value.ToString() == "{NN}")
                                 {
                                     notNullCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
                                 }
-                                if(format == "General")
+                                //ship particular cellerin belirlenmesi
+                                if (value != null && value.ToString() != "{NN}" && value.ToString().StartsWith("{") && value.ToString().EndsWith("}"))
+                                {
+                                    shipParticularCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
+                                }
+                                if (format == "General")
                                 {
                                     format = null;
                                 }
@@ -135,12 +164,24 @@ namespace WebApplication1.Controllers
                         }
                     }
 
+                    //kayıt dosyasıysa önce cellerin içi doldurulur.
+                    if (!model.IsTemplate)
+                    {
+                        List<CellRecord> savedCells = _excelService.GetCellRecordsByDocName(model.DocumentName);
+
+                        foreach (CellRecord cell in savedCells)
+                        {
+                            var sheet = worksheetList[cell.TableIndex];
+                            sheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
+                        }
+                    }
+
                 }
 
 
             }
 
-            return new UnlockResponseModel { DataCells = dataCells, OnlyUnlockCells = onlyUnlockedCells, NotNullCells = notNullCells };
+            return new UnlockResponseModel { DataCells = dataCells, OnlyUnlockCells = onlyUnlockedCells, NotNullCells = notNullCells, ShipParticularCells=shipParticularCells };
         }
 
         [HttpPost]
@@ -363,6 +404,15 @@ namespace WebApplication1.Controllers
 
                 worksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
             }
+
+            return excelPackage;
+        }
+
+        private ExcelPackage GetExcelPackageByTeplateName(string templateName)
+        {
+            string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
+            FileInfo fi = new FileInfo(templatePath);
+            ExcelPackage excelPackage = new ExcelPackage(fi);
 
             return excelPackage;
         }
