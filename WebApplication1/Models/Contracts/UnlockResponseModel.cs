@@ -15,6 +15,11 @@ namespace WebApplication1.Models.Contracts
         public List<UnlockedTableModel> NotNullCells { get; set; }
 
         public List<UnlockedTableModel> ShipParticularCells { get; set; }
+
         public List<UnlockedTableModel> FormulaCells { get; set; }
+
+        public List<MergeTableModel> MergedTables { get; set; }
+
+        public List<UnlockedTableModel> MergedDataCells { get; set; }
     }
 }

@@ -76,6 +76,116 @@ namespace WebApplication1.Controllers
             return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
         }
 
+        private UnlockResponseModel OptimizedFindUnlockedCells(CellUnlockModel model)
+        {
+            string templateName = "";
+            if (model.IsTemplate)
+            {
+                templateName = model.DocumentName;
+            }
+            else
+            {
+                templateName = _excelService.GetTemplateName(model.DocumentName);
+            }
+
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
+            List<UnlockedTableModel> dataCells = new List<UnlockedTableModel>();
+            List<UnlockedTableModel> notNullCells = new List<UnlockedTableModel>();
+            List<UnlockedTableModel> shipParticularCells = new List<UnlockedTableModel>();
+            List<MergeTableModel> mergedTables = new List<MergeTableModel>();
+            List<UnlockedTableModel> mergedDataCells = new List<UnlockedTableModel>();
+
+            FileInfo fi = new FileInfo(path);
+            using (ExcelPackage excelPackage = new ExcelPackage(fi))
+            {
+                ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
+
+
+                //data ve unlock celleri bulur.
+                for (int k = 0; k < worksheetList.Count; k++)
+                {
+                    var currentWorksheet = worksheetList[k];
+
+                    dataCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
+                    notNullCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
+                    shipParticularCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
+                    mergedTables.Add(new MergeTableModel { TableIndex = k, MergedCellList = new List<string>() });
+                    mergedDataCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
+
+                    List<string> mergedCellList = currentWorksheet.MergedCells.ToList();
+                    //kilitli olmayan ve merge edilmemiş hücreleri bulur ve listeye ekler
+                    for (int i = 1; i < 300; i++)
+                    {
+                        for (int j = 1; j < 300; j++)
+                        {
+                            var currentCell = currentWorksheet.Cells[i, j];
+                            bool locked = currentCell.Style.Locked;
+                            bool merged = currentCell.Merge;
+
+
+                            if (!locked)
+                            {
+                                var value = currentCell.Value;
+                                string format = currentCell.Style.Numberformat.Format;
+
+                                //not null cellerin belirlenmesi
+                                if (value != null && value.ToString() == "{NN}")
+                                {
+                                    notNullCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
+                                }
+                                //ship particular cellerin belirlenmesi
+                                if (value != null && value.ToString() != "{NN}" && value.ToString().StartsWith("{") && value.ToString().EndsWith("}"))
+                                {
+                                    shipParticularCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
+                                }
+                                if (format == "General")
+                                {
+                                    format = null;
+                                }
+
+
+                                if (!merged) //its data cell
+                                {
+                                    dataCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
+                                }
+                                else
+                                {
+                                    var mergeAdress = currentWorksheet.MergedCells[i, j];
+
+                                    string masterCellName = mergeAdress.Split(":")[0];
+                                    var masterCell = currentWorksheet.Cells[masterCellName];
+
+                                    if (masterCell.Start.Row == i && masterCell.Start.Column == j) //now we are in master cell so its data cell
+                                    {
+                                        mergedDataCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
+                                        mergedTables[k].MergedCellList.Add(mergeAdress);
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+
+                    //kayıt dosyasıysa önce cellerin içi doldurulur.
+                    if (!model.IsTemplate)
+                    {
+                        List<CellRecord> savedCells = _excelService.GetCellRecordsByDocName(model.DocumentName);
+
+                        foreach (CellRecord cell in savedCells)
+                        {
+                            var sheet = worksheetList[cell.TableIndex];
+                            sheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
+                        }
+                    }
+
+                }
+
+
+            }
+
+            return new UnlockResponseModel { DataCells = dataCells, NotNullCells = notNullCells, ShipParticularCells = shipParticularCells, MergedTables = mergedTables, MergedDataCells = mergedDataCells };
+        }
+
         private UnlockResponseModel FindUnlockedCells(CellUnlockModel model)
         {
             string templateName = "";
@@ -94,6 +204,7 @@ namespace WebApplication1.Controllers
             List<UnlockedTableModel> notNullCells = new List<UnlockedTableModel>();
             List<UnlockedTableModel> shipParticularCells = new List<UnlockedTableModel>();
             List<UnlockedTableModel> formulaCells = new List<UnlockedTableModel>();
+            List<MergeTableModel> mergedTables = new List<MergeTableModel>();
 
             FileInfo fi = new FileInfo(path);
             using (ExcelPackage excelPackage = new ExcelPackage(fi))
@@ -111,6 +222,7 @@ namespace WebApplication1.Controllers
                     notNullCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
                     shipParticularCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
                     formulaCells.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
+                    mergedTables.Add(new MergeTableModel { TableIndex = k, MergedCellList = new List<string>() });
 
                     List<string> mergedCellList = currentWorksheet.MergedCells.ToList();
                     //kilitli olmayan ve merge edilmemiş hücreleri bulur ve listeye ekler
@@ -158,12 +270,14 @@ namespace WebApplication1.Controllers
                                 else
                                 {
                                     var mergeAdress = currentWorksheet.MergedCells[i, j];
+                                    
                                     string masterCellName = mergeAdress.Split(":")[0];
                                     var masterCell = currentWorksheet.Cells[masterCellName];
 
                                     if (masterCell.Start.Row == i && masterCell.Start.Column == j) //now we are in master cell so its data cell
                                     {
                                         dataCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
+                                        mergedTables[k].MergedCellList.Add(mergeAdress);
                                     }
                                     else //its only unlock cell
                                     {
@@ -192,13 +306,13 @@ namespace WebApplication1.Controllers
 
             }
 
-            return new UnlockResponseModel { DataCells = dataCells, OnlyUnlockCells = onlyUnlockedCells, NotNullCells = notNullCells, ShipParticularCells=shipParticularCells, FormulaCells=formulaCells };
+            return new UnlockResponseModel { DataCells = dataCells, OnlyUnlockCells = onlyUnlockedCells, NotNullCells = notNullCells, ShipParticularCells=shipParticularCells, FormulaCells=formulaCells, MergedTables=mergedTables };
         }
 
         [HttpPost]
         public IActionResult GetUnlockedCells([FromBody] CellUnlockModel model)
         {
-            UnlockResponseModel response = FindUnlockedCells(model);
+            UnlockResponseModel response = OptimizedFindUnlockedCells(model);
             return Ok(response);
         }
 

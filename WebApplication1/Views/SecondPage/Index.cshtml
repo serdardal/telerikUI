@@ -181,7 +181,7 @@
         var sheetList = spread.sheets();
         for (var i = 0; i < sheetList.length; i++) {
             var sheet = sheetList[i];
-            var range = sheet.range("A1:AX200");
+            var range = sheet.range("A1:CX200");
             range.enable(false);
         }
 
@@ -196,9 +196,8 @@
             contentType: "application/json",
             data: JSON.stringify(data),
             success: function (datas) {
+                console.log("veri alındı.")
 
-                cells = datas.dataCells;
-                notNullCells = datas.notNullCells;
                 var shipParticularCells = datas.shipParticularCells;
 
                 var sheetList = spread.sheets();
@@ -213,17 +212,30 @@
                     }
                 }
 
+                console.log("data hücreler açıldı.")
+
+                var mergedTables = datas.mergedTables;
+
                 for (var k = 0; k < sheetList.length; k++) {
-                    var cellList = datas.onlyUnlockCells[k].cellList;
+                    var mergedAddressList = mergedTables[k].mergedCellList;
                     var sheet = sheetList[k];
 
-                    for (var i = 0; i < cellList.length; i++) {
-                        var range = sheet.range(cellList[i].rowIndex-1, cellList[i].columnIndex-1)
+                    for (var i = 0; i < mergedAddressList.length; i++) {
+                        var range = sheet.range(mergedAddressList[i])
                         range.enable(true);
                     }
                 }
 
+                console.log("merge hücreler açıldı.")
+
                 lockShipParticularCells(shipParticularCells);
+
+                //değişkenlerin atanması
+                cells = datas.dataCells;
+                for (var i = 0; i < cells.length; i++) {
+                    cells[i].cellList = cells[i].cellList.concat(datas.mergedDataCells[i].cellList);
+                }
+                notNullCells = datas.notNullCells;
                 
             }
         })
