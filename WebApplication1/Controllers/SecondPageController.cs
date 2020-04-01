@@ -562,7 +562,20 @@ namespace WebApplication1.Controllers
                 bool isFormulaCell = worksheet.Cells[cell.RowIndex, cell.ColumnIndex].Formula == "" ? false : true;
                 if (!isFormulaCell)
                 {
-                    worksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
+                    ExcelRange range = worksheet.Cells[cell.RowIndex, cell.ColumnIndex];
+                    if (range.Style.Numberformat.Format.StartsWith("0"))
+                    {
+                        range.Value = Int32.Parse(cell.Data);
+                    }
+                    else if (range.Style.Numberformat.Format.StartsWith("mm"))
+                    {
+                        range.Value = DateTime.Parse(cell.Data);
+                    }
+                    else
+                    {
+                        range.Value = cell.Data;
+                    }
+                    
 
                 }
             }
