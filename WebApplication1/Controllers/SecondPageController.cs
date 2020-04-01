@@ -438,6 +438,7 @@ namespace WebApplication1.Controllers
 
             FileInfo fi = new FileInfo(templatePath);
             ExcelPackage excelPackage = new ExcelPackage(fi);
+            RemoveExcelShapesFromExcelPackage(excelPackage);
 
             ExcelWorkbook excelWorkBook = excelPackage.Workbook;
 
@@ -460,6 +461,7 @@ namespace WebApplication1.Controllers
             string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
             FileInfo fi = new FileInfo(templatePath);
             ExcelPackage excelPackage = new ExcelPackage(fi);
+            RemoveExcelShapesFromExcelPackage(excelPackage);
 
             return excelPackage;
         }
@@ -469,7 +471,7 @@ namespace WebApplication1.Controllers
         {
             byte[] fileByteArray = { };
 
-            using (ExcelPackage excelPackage = GetSavedExcelPackageByName(docName))
+            using (ExcelPackage excelPackage = GetSavedExcelPackageWithShapesByName(docName))
             {
                 ExcelWorksheets sheetList = excelPackage.Workbook.Worksheets;
 
@@ -497,6 +499,57 @@ namespace WebApplication1.Controllers
 
             string file = Convert.ToBase64String(fileByteArray);
             return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
+        }
+
+        private ExcelPackage GetSavedExcelPackageWithShapesByName(string docName)
+        {
+            string templateName = _excelService.GetTemplateName(docName);
+            string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
+
+            List<CellRecord> cells = _excelService.GetCellRecordsByDocName(docName);
+
+            FileInfo fi = new FileInfo(templatePath);
+            ExcelPackage excelPackage = new ExcelPackage(fi);
+
+            ExcelWorkbook excelWorkBook = excelPackage.Workbook;
+
+            foreach (CellRecord cell in cells)
+            {
+                ExcelWorksheet worksheet = excelWorkBook.Worksheets[cell.TableIndex];
+                bool isFormulaCell = worksheet.Cells[cell.RowIndex, cell.ColumnIndex].Formula == "" ? false : true;
+                if (!isFormulaCell)
+                {
+                    worksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
+
+                }
+            }
+
+            return excelPackage;
+        }
+
+        private void RemoveExcelShapesFromExcelPackage(ExcelPackage excelPackage)
+        {
+            ExcelWorkbook excelWorkBook = excelPackage.Workbook;
+            ExcelWorksheets excelWorksheets = excelWorkBook.Worksheets;
+
+            foreach(ExcelWorksheet worksheet in excelWorksheets)
+            {
+                OfficeOpenXml.Drawing.ExcelDrawings drawings = worksheet.Drawings;
+
+                List<OfficeOpenXml.Drawing.ExcelDrawing> drawingRemoveList = new List<OfficeOpenXml.Drawing.ExcelDrawing>();
+
+                foreach(OfficeOpenXml.Drawing.ExcelDrawing drawing in drawings)
+                {
+                    if(drawing.GetType() == typeof (OfficeOpenXml.Drawing.ExcelShape)){
+                        drawingRemoveList.Add(drawing);
+                    }
+                }
+
+                foreach(OfficeOpenXml.Drawing.ExcelDrawing drawingToRemove in drawingRemoveList)
+                {
+                    drawings.Remove(drawingToRemove);
+                }
+            }
         }
     }
 }
