@@ -86,7 +86,7 @@ namespace WebApplication1.Controllers
             return Ok(fileNames);
         }
 
-        [HttpGet("SecondPage/GetSavedFileByName/{docName}")]
+        [HttpGet("SecondPage/GetSavedFileByName/{fileName}")]
         public string GetSavedFileByName(string fileName)
         {
             byte[] fileByteArray = { };
@@ -219,7 +219,7 @@ namespace WebApplication1.Controllers
             return Ok(response);
         }
 
-        [HttpGet("SecondPage/GetProtectedSavedFileByName/{docName}")]
+        [HttpGet("SecondPage/GetProtectedSavedFileByName/{fileName}")]
         public string GetProtectedSavedFileByName(string fileName)
         {
             //protected olarak export etmede kullanılır.

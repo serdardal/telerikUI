@@ -12,11 +12,11 @@ namespace WebApplication1.Services
 
         bool UpdateCells(List<CellRecord> addedCellRecords, List<CellRecord> changedCellRecords, List<CellRecord> deletedCellRecords);
 
-        string GetTemplateName(string documentName);
+        string GetTemplateName(string fileName);
 
-        DateTime GetDate(string documentName);
+        DateTime GetDate(string fileName);
 
-        List<CellRecord> GetCellRecordsByDocName(string docName);
+        List<CellRecord> GetCellRecordsByDocName(string fileName);
 
         List<string> GetSavedFileNames();
     }
