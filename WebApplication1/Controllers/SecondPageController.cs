@@ -318,6 +318,7 @@ namespace WebApplication1.Controllers
 
         public ActionResult SaveFileToTemp(string contentType, string base64, string fileName)
         {
+            System.IO.Directory.CreateDirectory(Directory.GetCurrentDirectory() + "\\Temp");
             var fileContents = Convert.FromBase64String(base64);
             System.IO.File.WriteAllBytes(Directory.GetCurrentDirectory() + $"\\Temp\\{fileName}.xlsx", fileContents);
 
