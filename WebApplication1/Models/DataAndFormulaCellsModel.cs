@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace WebApplication1.Models
 {
-    public class FilledTableModel
+    public class DataAndFormulaCellsModel
     {
-        public int TableIndex { get; set; }
+        public List<TableModel> DataCellTables { get; set; }
 
-        public List<FilledCellModel> CellList { get; set; }
+        public List<TableModel> FormulaCellTables { get; set; }
     }
 }

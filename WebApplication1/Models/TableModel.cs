@@ -6,7 +6,7 @@ using WebApplication1.Models;
 
 namespace Deneme.Models
 {
-    public class UnlockedTableModel
+    public class TableModel
     {
         public int TableIndex { get; set; }
 
