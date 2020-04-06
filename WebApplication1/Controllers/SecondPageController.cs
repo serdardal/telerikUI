@@ -76,6 +76,80 @@ namespace WebApplication1.Controllers
             return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
         }
 
+        [HttpGet]
+        public IActionResult GetSavedFileNamesFromDB()
+        {
+            List<string> fileNames = _excelService.GetSavedFileNames();
+            return Ok(fileNames);
+        }
+
+        [HttpGet("SecondPage/GetSavedFileByName/{docName}")]
+        public string GetSavedFileByName(string docName)
+        {
+            byte[] fileByteArray = { };
+
+            using (ExcelPackage excelPackage = GetSavedExcelPackageByName(docName))
+            {
+                fileByteArray = excelPackage.GetAsByteArray();
+            }
+
+            string file = Convert.ToBase64String(fileByteArray);
+            return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
+        }
+
+        [HttpPost]
+        public IActionResult GetUnlockedCells([FromBody] CellUnlockModel model)
+        {
+            UnlockResponseModel response = OptimizedFindUnlockedCells(model);
+            return Ok(response);
+        }
+
+        [HttpGet("SecondPage/GetProtectedSavedFileByName/{docName}")]
+        public string GetProtectedSavedFileByName(string docName)
+        {
+            byte[] fileByteArray = { };
+
+            using (ExcelPackage excelPackage = GetSavedExcelPackageWithShapesByName(docName))
+            {
+                ExcelWorksheets sheetList = excelPackage.Workbook.Worksheets;
+
+                foreach (ExcelWorksheet sheet in sheetList)
+                {
+                    sheet.Protection.SetPassword("bimar123");
+                    sheet.Protection.AllowEditObject = false;
+                    sheet.Protection.AllowEditScenarios = false;
+                    sheet.Protection.AllowDeleteColumns = false;
+                    sheet.Protection.AllowDeleteRows = false;
+                    sheet.Protection.AllowFormatCells = false;
+                    sheet.Protection.AllowFormatColumns = false;
+                    sheet.Protection.AllowFormatRows = false;
+                    sheet.Protection.AllowInsertColumns = false;
+                    sheet.Protection.AllowInsertHyperlinks = false;
+                    sheet.Protection.AllowInsertRows = false;
+                    sheet.Protection.AllowPivotTables = false;
+                    sheet.Protection.AllowSelectLockedCells = false;
+                    sheet.Protection.AllowSelectUnlockedCells = false;
+                    sheet.Protection.AllowSort = false;
+                }
+
+                fileByteArray = excelPackage.GetAsByteArray();
+            }
+
+            string file = Convert.ToBase64String(fileByteArray);
+            return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
+        }
+
+        public ActionResult SaveFileToTemp(string contentType, string base64, string fileName)
+        {
+            System.IO.Directory.CreateDirectory(Directory.GetCurrentDirectory() + "\\Temp");
+            var fileContents = Convert.FromBase64String(base64);
+            System.IO.File.WriteAllBytes(Directory.GetCurrentDirectory() + $"\\Temp\\{fileName}.xlsx", fileContents);
+
+            SyncDataWithDB(fileName);
+
+            return View("Index");
+        }
+
         private UnlockResponseModel OptimizedFindUnlockedCells(CellUnlockModel model)
         {
             string templateName = "";
@@ -309,24 +383,6 @@ namespace WebApplication1.Controllers
             return new UnlockResponseModel { DataCells = dataCells, OnlyUnlockCells = onlyUnlockedCells, NotNullCells = notNullCells, ShipParticularCells=shipParticularCells, FormulaCells=formulaCells, MergedTables=mergedTables };
         }
 
-        [HttpPost]
-        public IActionResult GetUnlockedCells([FromBody] CellUnlockModel model)
-        {
-            UnlockResponseModel response = OptimizedFindUnlockedCells(model);
-            return Ok(response);
-        }
-
-        public ActionResult SaveFileToTemp(string contentType, string base64, string fileName)
-        {
-            System.IO.Directory.CreateDirectory(Directory.GetCurrentDirectory() + "\\Temp");
-            var fileContents = Convert.FromBase64String(base64);
-            System.IO.File.WriteAllBytes(Directory.GetCurrentDirectory() + $"\\Temp\\{fileName}.xlsx", fileContents);
-
-            SyncDataWithDB(fileName);
-
-            return View("Index");
-        }
-
         private void SyncDataWithDB(string docName)
         {
             var cells = _excelService.GetCellRecordsByDocName(docName);
@@ -523,27 +579,6 @@ namespace WebApplication1.Controllers
             return DateTime.Parse(fileName.Substring(fileName.Length - 10, 10));
         }
 
-        [HttpGet]
-        public IActionResult GetSavedFileNamesFromDB()
-        {
-            List<string> fileNames = _excelService.GetSavedFileNames();
-            return Ok(fileNames);
-        }
-
-        [HttpGet("SecondPage/GetSavedFileByName/{docName}")]
-        public string GetSavedFileByName(string docName)
-        {
-            byte[] fileByteArray = { };
-
-            using (ExcelPackage excelPackage = GetSavedExcelPackageByName(docName))
-            {
-                fileByteArray = excelPackage.GetAsByteArray();
-            }
-
-            string file = Convert.ToBase64String(fileByteArray);
-            return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
-        }
-
         private ExcelPackage GetSavedExcelPackageByName(string docName)
         {
             string templateName = _excelService.GetTemplateName(docName);
@@ -592,41 +627,6 @@ namespace WebApplication1.Controllers
             RemoveExcelShapesFromExcelPackage(excelPackage);
 
             return excelPackage;
-        }
-
-        [HttpGet("SecondPage/GetProtectedSavedFileByName/{docName}")]
-        public string GetProtectedSavedFileByName(string docName)
-        {
-            byte[] fileByteArray = { };
-
-            using (ExcelPackage excelPackage = GetSavedExcelPackageWithShapesByName(docName))
-            {
-                ExcelWorksheets sheetList = excelPackage.Workbook.Worksheets;
-
-                foreach(ExcelWorksheet sheet in sheetList)
-                {
-                    sheet.Protection.SetPassword("bimar123");
-                    sheet.Protection.AllowEditObject = false;
-                    sheet.Protection.AllowEditScenarios = false;
-                    sheet.Protection.AllowDeleteColumns = false;
-                    sheet.Protection.AllowDeleteRows = false;
-                    sheet.Protection.AllowFormatCells = false;
-                    sheet.Protection.AllowFormatColumns = false;
-                    sheet.Protection.AllowFormatRows = false;
-                    sheet.Protection.AllowInsertColumns = false;
-                    sheet.Protection.AllowInsertHyperlinks = false;
-                    sheet.Protection.AllowInsertRows = false;
-                    sheet.Protection.AllowPivotTables = false;
-                    sheet.Protection.AllowSelectLockedCells = false;
-                    sheet.Protection.AllowSelectUnlockedCells = false;
-                    sheet.Protection.AllowSort = false;
-                }
-
-                fileByteArray = excelPackage.GetAsByteArray();
-            }
-
-            string file = Convert.ToBase64String(fileByteArray);
-            return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
         }
 
         private ExcelPackage GetSavedExcelPackageWithShapesByName(string docName)
