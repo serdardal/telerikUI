@@ -28,6 +28,7 @@ namespace WebApplication1.Controllers
         [HttpGet]
         public IActionResult GetTemplateNames()
         {
+            //Forms klasörü altındaki şablon isimlerini döndürür.
             string[] excelFiles = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "Forms"), "*.xlsx")
                                      .Select(Path.GetFileName)
                                      .ToArray();
@@ -80,16 +81,17 @@ namespace WebApplication1.Controllers
         [HttpGet]
         public IActionResult GetSavedFileNamesFromDB()
         {
+            //databasedeki kayıtlı dosya isimlerini liste şeklinde döndürür.
             List<string> fileNames = _excelService.GetSavedFileNames();
             return Ok(fileNames);
         }
 
         [HttpGet("SecondPage/GetSavedFileByName/{docName}")]
-        public string GetSavedFileByName(string docName)
+        public string GetSavedFileByName(string fileName)
         {
             byte[] fileByteArray = { };
 
-            using (ExcelPackage excelPackage = GetSavedExcelPackageByName(docName))
+            using (ExcelPackage excelPackage = GetSavedExcelPackageByName(fileName))
             {
                 fileByteArray = excelPackage.GetAsByteArray();
             }
@@ -135,9 +137,9 @@ namespace WebApplication1.Controllers
 
                     List<string> mergedCellList = currentWorksheet.MergedCells.ToList();
                     //kilitli olmayan ve merge edilmemiş hücreleri bulur ve listeye ekler
-                    for (int i = 1; i < 300; i++)
+                    for (int i = 1; i < 300; i++) //satır
                     {
-                        for (int j = 1; j < 300; j++)
+                        for (int j = 1; j < 300; j++) //sütun
                         {
                             var currentCell = currentWorksheet.Cells[i, j];
                             bool locked = currentCell.Style.Locked;
@@ -159,18 +161,21 @@ namespace WebApplication1.Controllers
                                 {
                                     shipParticularCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
                                 }
+                                //excel hücreleri için format belirlenmez ise "General" olarak dönüyor
+                                //telerik spreadsheets ise null olarak istiyor.
                                 if (format == "General")
                                 {
                                     format = null;
                                 }
 
 
-                                if (!merged) //its data cell
+                                if (!merged) //data celldir
                                 {
                                     dataCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
                                 }
                                 else
                                 {
+                                    //merge hücrelerden sol üstte olan data celldir.
                                     var mergeAdress = currentWorksheet.MergedCells[i, j];
 
                                     string masterCellName = mergeAdress.Split(":")[0];
@@ -215,14 +220,16 @@ namespace WebApplication1.Controllers
         }
 
         [HttpGet("SecondPage/GetProtectedSavedFileByName/{docName}")]
-        public string GetProtectedSavedFileByName(string docName)
+        public string GetProtectedSavedFileByName(string fileName)
         {
+            //protected olarak export etmede kullanılır.
             byte[] fileByteArray = { };
 
-            using (ExcelPackage excelPackage = GetSavedExcelPackageWithShapesByName(docName))
+            using (ExcelPackage excelPackage = GetSavedExcelPackageWithShapesByName(fileName))
             {
                 ExcelWorksheets sheetList = excelPackage.Workbook.Worksheets;
 
+                //sheetler için protect ayarları
                 foreach (ExcelWorksheet sheet in sheetList)
                 {
                     sheet.Protection.SetPassword("bimar123");
@@ -251,25 +258,30 @@ namespace WebApplication1.Controllers
 
         public ActionResult SaveFileToTemp(string contentType, string base64, string fileName)
         {
+            //dosya kayıt edilirse veya update edilirse Temp klasörü altına kaydedilir.
+
+            //Temp klasörü yok ise oluştur.
             System.IO.Directory.CreateDirectory(Directory.GetCurrentDirectory() + "\\Temp");
             var fileContents = Convert.FromBase64String(base64);
             System.IO.File.WriteAllBytes(Directory.GetCurrentDirectory() + $"\\Temp\\{fileName}.xlsx", fileContents);
 
+            //dosya kaydedildikten sonra üzerindeki veriler database ile senkronize edilir.
             SyncDataWithDB(fileName);
 
             return View("Index");
         }
 
-        private void SyncDataWithDB(string docName)
+        private void SyncDataWithDB(string fileName)
         {
-            var cells = _excelService.GetCellRecordsByDocName(docName);
+            //kayıt edilen dosyanın yeni bir dosya mı yoksa kayıtlı bir dosya mı olduğunun belirlenmesi
+            var cells = _excelService.GetCellRecordsByDocName(fileName);
             if(cells.Count > 0)// kayıt bulunuyor yani update işlemi
             {
-                UpdateExistingFileInDB(docName);
+                UpdateExistingFileInDB(fileName);
             }
             else // kayıt yok yani ekleme işlemi
             {
-                AddNewRecordsToDB(docName);
+                AddNewRecordsToDB(fileName);
             }
         }
 
@@ -280,9 +292,11 @@ namespace WebApplication1.Controllers
 
             List<CellRecord> DBCellRecords = _excelService.GetCellRecordsByDocName(fileName);
 
+            //değişiklikler data cellerde veya formül cellerinde olabilir şablon üzerinden bu hücrelerin alınması.
             DataAndFormulaCellsModel dataAndFormulaCellsModel = FindDataAndFormulaCells(templateName);
             List<TableModel> dataTables = dataAndFormulaCellsModel.DataCellTables;
             List<TableModel> formulaTables = dataAndFormulaCellsModel.FormulaCellTables;
+            //bakılacak cellerin bir yerde toplanması.
             foreach (TableModel dataTable in dataTables)
             {
                 TableModel formulaTable = formulaTables[dataTable.TableIndex];
@@ -290,6 +304,10 @@ namespace WebApplication1.Controllers
                 dataTable.CellList.AddRange(formulaTable.CellList);
             }
 
+            //değişiklikler şu şekilde olabilir:
+            //yeni kayıtlar eklenmiş olabilir.
+            //var olan kayıtların değeri değişmiş olabilir.
+            //var olan kayıt silinmiş olabilir.
             List<CellRecord> newCellRecords = new List<CellRecord>();
             List<CellRecord> updatedCellRecords = new List<CellRecord>();
             List<CellRecord> deletedCellRecords = new List<CellRecord>();
@@ -300,6 +318,7 @@ namespace WebApplication1.Controllers
             {
                 ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
 
+                // güncellenmiş veya silinmiş kayıtların belirlenmesi.
                 foreach(CellRecord cellRecord in DBCellRecords)
                 {
                     ExcelWorksheet tempWorksheet = worksheetList[cellRecord.TableIndex];
@@ -313,16 +332,8 @@ namespace WebApplication1.Controllers
                     // değer değiştiyse update edilmiş
                     else if (tempCell.Value.ToString() != cellRecord.Data)
                     {
-                        updatedCellRecords.Add(new CellRecord
-                        {
-                            RowIndex = cellRecord.RowIndex,
-                            ColumnIndex = cellRecord.ColumnIndex,
-                            Data = tempCell.Value.ToString(),
-                            TableIndex = cellRecord.TableIndex,
-                            TemplateName = templateName,
-                            FileName = fileName,
-                            Date = date
-                        });
+                        cellRecord.Data = tempCell.Value.ToString();
+                        updatedCellRecords.Add(cellRecord);
 
                     }
 
@@ -330,6 +341,7 @@ namespace WebApplication1.Controllers
                     dataTables[cellRecord.TableIndex].CellList.RemoveAll(x => x.RowIndex == cellRecord.RowIndex && x.ColumnIndex == cellRecord.ColumnIndex);
                 }
 
+                //yeni eklenmiş kayıtların belirlenmesi.
                 foreach(TableModel table in dataTables)
                 {
                     ExcelWorksheet tempWorksheet = worksheetList[table.TableIndex];
@@ -364,10 +376,12 @@ namespace WebApplication1.Controllers
             string templateName = FindTemplateNameFromFileName(fileName);
             DateTime date = FindDateFromFileName(fileName);
 
+            //değişiklikler data cellerde veya formül cellerinde olabilir şablon üzerinden bu hücrelerin alınması.
             DataAndFormulaCellsModel dataAndFormulaCellsModel = FindDataAndFormulaCells(templateName);
             List<TableModel> dataTables = dataAndFormulaCellsModel.DataCellTables;
             List<TableModel> formulaTables = dataAndFormulaCellsModel.FormulaCellTables;
 
+            //eklenecek yeni kayıtlar listesi
             List<CellRecord> newCellRecords = new List<CellRecord>();
 
             string tempFilePath = Path.Combine(Directory.GetCurrentDirectory(), "Temp", fileName + ".xlsx");
@@ -376,6 +390,8 @@ namespace WebApplication1.Controllers
             {
                 ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
 
+                //data cellerin satır ve sütunlarını biliyoruz
+                //temp dosya üzerinde bu koordinatlara gidilir ve null değilse değer alınır.
                 foreach(TableModel table in dataTables)
                 {
                     ExcelWorksheet tempWorksheet = worksheetList[table.TableIndex];
@@ -403,7 +419,9 @@ namespace WebApplication1.Controllers
                     }
                 }
 
-                foreach(TableModel formulaTable in formulaTables)
+                //formül cellerin satır ve sütunlarını biliyoruz
+                //temp dosya üzerinde bu koordinatlara gidilir ve null değilse değer alınır.
+                foreach (TableModel formulaTable in formulaTables)
                 {
                     ExcelWorksheet tempWorksheet = worksheetList[formulaTable.TableIndex];
                     List<FilledCellModel> formulaCellList = formulaTable.CellList;
@@ -439,6 +457,7 @@ namespace WebApplication1.Controllers
             List<string> templateNames = Directory.GetFiles(Path.Combine(Directory.GetCurrentDirectory(), "Forms"), "*.xlsx")
                 .Select(Path.GetFileName).ToList();
 
+            //kayıtlı dosya isimleri şablon ismi ile başlıyor mu kontrol edilir.
             foreach (string template in templateNames)
             {
                 string name = template.Replace(".xlsx", "");
@@ -454,22 +473,26 @@ namespace WebApplication1.Controllers
 
         private DateTime FindDateFromFileName(string fileName)
         {
+            //kayıtlı dosyaların son 10 karakteri tarihi içeriyor
             return DateTime.Parse(fileName.Substring(fileName.Length - 10, 10));
         }
 
-        private ExcelPackage GetSavedExcelPackageByName(string docName)
+        private ExcelPackage GetSavedExcelPackageByName(string fileName)
         {
-            string templateName = _excelService.GetTemplateName(docName);
+            string templateName = _excelService.GetTemplateName(fileName);
             string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
 
-            List<CellRecord> cells = _excelService.GetCellRecordsByDocName(docName);
+            //databasede kayıtlı hücreler
+            List<CellRecord> cells = _excelService.GetCellRecordsByDocName(fileName);
 
             FileInfo fi = new FileInfo(templatePath);
             ExcelPackage excelPackage = new ExcelPackage(fi);
+
             RemoveExcelShapesFromExcelPackage(excelPackage);
 
             ExcelWorkbook excelWorkBook = excelPackage.Workbook;
 
+            //kayıtlı hücrelerin şablon içerisine doldurulması
             foreach (CellRecord cell in cells)
             {
                 ExcelWorksheet worksheet = excelWorkBook.Worksheets[cell.TableIndex];
@@ -507,18 +530,21 @@ namespace WebApplication1.Controllers
             return excelPackage;
         }
 
-        private ExcelPackage GetSavedExcelPackageWithShapesByName(string docName)
+        private ExcelPackage GetSavedExcelPackageWithShapesByName(string fileName)
         {
-            string templateName = _excelService.GetTemplateName(docName);
+            //eğer excelshape var ise bunun export edilen protected sheetlerde görünmesi istiyoruz
+
+            string templateName = _excelService.GetTemplateName(fileName);
             string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
 
-            List<CellRecord> cells = _excelService.GetCellRecordsByDocName(docName);
+            List<CellRecord> cells = _excelService.GetCellRecordsByDocName(fileName);
 
             FileInfo fi = new FileInfo(templatePath);
             ExcelPackage excelPackage = new ExcelPackage(fi);
 
             ExcelWorkbook excelWorkBook = excelPackage.Workbook;
 
+            //şablon databasedeki kayıtlı hücreler ile doldurulur.
             foreach (CellRecord cell in cells)
             {
                 ExcelWorksheet worksheet = excelWorkBook.Worksheets[cell.TableIndex];
@@ -546,6 +572,7 @@ namespace WebApplication1.Controllers
 
                 foreach(OfficeOpenXml.Drawing.ExcelDrawing drawing in drawings)
                 {
+                    //drawingin tipi ExcelShape ise çıkar
                     if(drawing.GetType() == typeof (OfficeOpenXml.Drawing.ExcelShape)){
                         drawingRemoveList.Add(drawing);
                     }
@@ -560,6 +587,8 @@ namespace WebApplication1.Controllers
 
         private List<TableModel> FindShipParticularCells(string templateName)
         {
+            //ship particular hücrelerin belirlenmesi
+            //"{" ile başlayıp "}" ile biterler {NN} hariç
             string path = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
             List<TableModel> shipParticularCellTables = new List<TableModel>();
 
@@ -574,9 +603,9 @@ namespace WebApplication1.Controllers
 
                     shipParticularCellTables.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
 
-                    for (int i = 1; i < 300; i++)
+                    for (int i = 1; i < 300; i++) //satır
                     {
-                        for (int j = 1; j < 300; j++)
+                        for (int j = 1; j < 300; j++) //sütun
                         {
                             var currentCell = currentWorksheet.Cells[i, j];
                             bool locked = currentCell.Style.Locked;
@@ -636,7 +665,7 @@ namespace WebApplication1.Controllers
                             {
                                 var value = currentCell.Value;
 
-                                if (!merged) //its data cell
+                                if (!merged) //data celldir
                                 {
                                     dataCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString()});
                                 }
