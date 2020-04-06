@@ -35,9 +35,10 @@ namespace WebApplication1.Controllers
             return Ok(excelFiles);
         }
 
-        [HttpGet("SecondPage/GetTemplateByName/{docName}")]
-        public string GetTemplateByName(string docName)
+        [HttpGet("SecondPage/GetTemplateByName/{templateName}")]
+        public string GetTemplateByName(string templateName)
         {
+            //ship particular değişkenlerin bulunduğu dictionary
             Dictionary<string, string> variableDictionary = new Dictionary<string, string>();
             variableDictionary.Add("{VesselName}", "Jean Pierre A");
             variableDictionary.Add("{BuilderNo}", "JP-01");
@@ -45,18 +46,18 @@ namespace WebApplication1.Controllers
             variableDictionary.Add("{IMONo}", "9379351");
             variableDictionary.Add("{Company}", "Arkas Holding");
 
-            UnlockResponseModel unlockResponseModel = FindUnlockedCells(new CellUnlockModel { DocumentName = docName, IsTemplate = true });
-            List<UnlockedTableModel> shipParticularCells = unlockResponseModel.ShipParticularCells;
+            List<UnlockedTableModel> shipParticularCellTables = FindShipParticularCells(templateName);
 
             byte[] fileByteArray = { };
-            using (ExcelPackage excelPackage = GetExcelPackageByTeplateName(docName))
+            //gönderilmeden önce ship particular değişkenlerin doldurulması
+            using (ExcelPackage excelPackage = GetExcelPackageByTeplateName(templateName))
             {
                 ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
 
-                for (int i = 0; i < shipParticularCells.Count; i++)
+                for (int i = 0; i < shipParticularCellTables.Count; i++)
                 {
                     ExcelWorksheet templateWorksheet = worksheetList[i];
-                    UnlockedTableModel table = shipParticularCells[i];
+                    UnlockedTableModel table = shipParticularCellTables[i];
                     List<FilledCellModel> cellList = table.CellList;
 
                     foreach (FilledCellModel cell in cellList)
@@ -678,6 +679,46 @@ namespace WebApplication1.Controllers
                     drawings.Remove(drawingToRemove);
                 }
             }
+        }
+
+        private List<UnlockedTableModel> FindShipParticularCells(string templateName)
+        {
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
+            List<UnlockedTableModel> shipParticularCellTables = new List<UnlockedTableModel>();
+
+            FileInfo fi = new FileInfo(path);
+            using (ExcelPackage excelPackage = new ExcelPackage(fi))
+            {
+                ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
+
+                for (int k = 0; k < worksheetList.Count; k++)
+                {
+                    var currentWorksheet = worksheetList[k];
+
+                    shipParticularCellTables.Add(new UnlockedTableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
+
+                    for (int i = 1; i < 300; i++)
+                    {
+                        for (int j = 1; j < 300; j++)
+                        {
+                            var currentCell = currentWorksheet.Cells[i, j];
+                            bool locked = currentCell.Style.Locked;
+
+                            if (!locked)
+                            {
+                                var value = currentCell.Value;
+
+                                if (value != null && value.ToString() != "{NN}" && value.ToString().StartsWith("{") && value.ToString().EndsWith("}"))
+                                {
+                                    shipParticularCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value.ToString()});
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return shipParticularCellTables;
         }
     }
 }
