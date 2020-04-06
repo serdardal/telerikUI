@@ -203,7 +203,7 @@
 
                 //merge olmayan data hücrelerin enable edilmesi
                 for (var k = 0; k < sheetList.length; k++) {
-                    var cellList = datas.dataCells[k].cellList;
+                    var cellList = datas.notMergedDataCellTables[k].cellList;
                     var sheet = sheetList[k];
 
                     for (var i = 0; i < cellList.length; i++) {
@@ -217,7 +217,7 @@
                 //merge edilmiş data hücrelerin enable edilmesi
                 //sadece veri yazılacak hücreyi (sol üst hücre) enable etmek yeterli olmuyor.
                 //merge edilmiş tüm hücrelerin enable edilmesi gerekiyor.
-                var mergedTables = datas.mergedTables;
+                var mergedTables = datas.mergedRangesTables;
 
                 for (var k = 0; k < sheetList.length; k++) {
                     var mergedAddressList = mergedTables[k].mergedCellList;
@@ -230,15 +230,15 @@
                 }
 
                 //ship particular hücrelerin disable edilmesi
-                var shipParticularCells = datas.shipParticularCells;
+                var shipParticularCells = datas.shipParticularCellTables;
                 lockShipParticularCells(shipParticularCells);
 
                 //değişkenlerin atanması
-                dataCellTables = datas.dataCells;
+                dataCellTables = datas.notMergedDataCellTables;
                 for (var i = 0; i < dataCellTables.length; i++) {
-                    dataCellTables[i].cellList = dataCellTables[i].cellList.concat(datas.mergedDataCells[i].cellList);
+                    dataCellTables[i].cellList = dataCellTables[i].cellList.concat(datas.mergedDataCellTables[i].cellList);
                 }
-                notNullCellTables = datas.notNullCells;
+                notNullCellTables = datas.notNullCellTables;
                 
             }
         })
