@@ -500,15 +500,24 @@ namespace WebApplication1.Controllers
                 if (!isFormulaCell)
                 {
                     ExcelRange range = worksheet.Cells[cell.RowIndex, cell.ColumnIndex];
-                    if (range.Style.Numberformat.Format.StartsWith("0"))
+                    try
                     {
-                        range.Value = Int32.Parse(cell.Data);
+                        Type type = FindTypeOfCell(range.Style.Numberformat.Format);
+
+                        if(type == typeof(string))
+                        {
+                            range.Value = cell.Data;
+                        }
+                        else if (type == typeof(float))
+                        {
+                            range.Value = float.Parse(cell.Data);
+                        }
+                        else if (type == typeof(DateTime))
+                        {
+                            range.Value = DateTime.Parse(cell.Data);
+                        }
                     }
-                    else if (range.Style.Numberformat.Format.StartsWith("mm"))
-                    {
-                        range.Value = DateTime.Parse(cell.Data);
-                    }
-                    else
+                    catch (Exception)
                     {
                         range.Value = cell.Data;
                     }
@@ -691,6 +700,24 @@ namespace WebApplication1.Controllers
             }
 
             return new DataAndFormulaCellsModel { DataCellTables = dataCellTables, FormulaCellTables = formulaCellTables };
+        }
+
+        private Type FindTypeOfCell(string format)
+        {
+            if (format.StartsWith("@"))
+            {
+                return typeof(string);
+            }
+            else if (format.StartsWith("m") || format.StartsWith("d") || format.StartsWith("y"))
+            {
+                return typeof(DateTime);
+            }
+            else if (format.StartsWith("[") || format.StartsWith("0") ||format.StartsWith("#"))
+            {
+                return typeof(float);
+            }
+
+            return typeof(string);
         }
     }
 }
