@@ -8,18 +8,15 @@ namespace WebApplication1.Models.Contracts
 {
     public class UnlockResponseModel
     {
-        public List<UnlockedTableModel> DataCells { get; set; }
+        public List<TableModel> NotMergedDataCellTables { get; set; }
 
-        public List<UnlockedTableModel> OnlyUnlockCells { get; set; }
+        public List<TableModel> MergedDataCellTables { get; set; }
 
-        public List<UnlockedTableModel> NotNullCells { get; set; }
+        public List<TableModel> NotNullCellTables { get; set; }
 
-        public List<UnlockedTableModel> ShipParticularCells { get; set; }
+        public List<TableModel> ShipParticularCellTables { get; set; }
 
-        public List<UnlockedTableModel> FormulaCells { get; set; }
-
-        public List<MergeTableModel> MergedTables { get; set; }
-
-        public List<UnlockedTableModel> MergedDataCells { get; set; }
+        public List<MergeTableModel> MergedRangesTables { get; set; }
+  
     }
 }

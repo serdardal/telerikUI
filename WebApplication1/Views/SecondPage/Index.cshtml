@@ -61,10 +61,11 @@
         },
     });
     var spread = $('#spreadsheet').getKendoSpreadsheet();
-    var cells;
-    var notNullCells;
+    var dataCellTables;
+    var notNullCellTables;
     var currentTemplateName;
 
+    //şablon isimlerinin soldaki select içerisine doldurulması
     $.ajax({
         url: '/SecondPage/GetTemplateNames',
         method: "get",
@@ -73,6 +74,7 @@
         }
     })
 
+    //önceden kayıt edilmiş tabloların isimlerinin soldaki select içerisine doldurulması
     $.ajax({
         url: '/SecondPage/GetSavedFileNamesFromDB',
         method: "get",
@@ -178,6 +180,7 @@
     }
 
     function lockAllCells() {
+        //A1 den CX200 e kadar olan celler disable edilir.
         var sheetList = spread.sheets();
         for (var i = 0; i < sheetList.length; i++) {
             var sheet = sheetList[i];
@@ -196,25 +199,25 @@
             contentType: "application/json",
             data: JSON.stringify(data),
             success: function (datas) {
-                console.log("veri alındı.")
-
-                var shipParticularCells = datas.shipParticularCells;
-
                 var sheetList = spread.sheets();
 
+                //merge olmayan data hücrelerin enable edilmesi
                 for (var k = 0; k < sheetList.length; k++) {
-                    var cellList = datas.dataCells[k].cellList;
+                    var cellList = datas.notMergedDataCellTables[k].cellList;
                     var sheet = sheetList[k];
 
                     for (var i = 0; i < cellList.length; i++) {
+                        //Telerik Spreadsheets hücre indexleri 0 dan başlıyor fakat EPPlus'ta 1 den başlıyor
+                        //bu nedenle 1 çıkarıyoruz.
                         var range = sheet.range(cellList[i].rowIndex-1, cellList[i].columnIndex-1)
                         range.enable(true);
                     }
                 }
 
-                console.log("data hücreler açıldı.")
-
-                var mergedTables = datas.mergedTables;
+                //merge edilmiş data hücrelerin enable edilmesi
+                //sadece veri yazılacak hücreyi (sol üst hücre) enable etmek yeterli olmuyor.
+                //merge edilmiş tüm hücrelerin enable edilmesi gerekiyor.
+                var mergedTables = datas.mergedRangesTables;
 
                 for (var k = 0; k < sheetList.length; k++) {
                     var mergedAddressList = mergedTables[k].mergedCellList;
@@ -226,16 +229,16 @@
                     }
                 }
 
-                console.log("merge hücreler açıldı.")
-
+                //ship particular hücrelerin disable edilmesi
+                var shipParticularCells = datas.shipParticularCellTables;
                 lockShipParticularCells(shipParticularCells);
 
                 //değişkenlerin atanması
-                cells = datas.dataCells;
-                for (var i = 0; i < cells.length; i++) {
-                    cells[i].cellList = cells[i].cellList.concat(datas.mergedDataCells[i].cellList);
+                dataCellTables = datas.notMergedDataCellTables;
+                for (var i = 0; i < dataCellTables.length; i++) {
+                    dataCellTables[i].cellList = dataCellTables[i].cellList.concat(datas.mergedDataCellTables[i].cellList);
                 }
-                notNullCells = datas.notNullCells;
+                notNullCellTables = datas.notNullCellTables;
                 
             }
         })
@@ -287,8 +290,9 @@
     function checkCells() {
         var sheetList = spread.sheets();
 
-        for (var i = 0; i < cells.length; i++) {
-            var dataTable = cells[i];
+        //cell formatının değişip değişmediğinin kontrolü değiştirildiyse uyarıyor ve işlem yaptırmıyor.
+        for (var i = 0; i < dataCellTables.length; i++) {
+            var dataTable = dataCellTables[i];
             var dataCellList = dataTable.cellList;
 
             var sheet = sheetList[i];
@@ -303,8 +307,9 @@
             }
         }
 
-        for (var i = 0; i < notNullCells.length; i++) {
-            notNullTable = notNullCells[i];
+        //not null cellerin doldurulduğundan emin olur. doldurulmayan varsa işlem yaptırmaz.
+        for (var i = 0; i < notNullCellTables.length; i++) {
+            notNullTable = notNullCellTables[i];
             notNullCellList = notNullTable.cellList;
 
             var sheet = sheetList[i];

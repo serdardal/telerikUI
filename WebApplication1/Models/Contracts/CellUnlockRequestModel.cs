@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace WebApplication1.Models
 {
-    public class CellUnlockModel
+    public class CellUnlockRequestModel
     {
         public string DocumentName { get; set; }
 
