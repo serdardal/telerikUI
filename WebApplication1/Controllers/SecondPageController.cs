@@ -725,14 +725,17 @@ namespace WebApplication1.Controllers
 
         private Type FindTypeOfCell(string format)
         {
+            //text için format "@"
             if (format.StartsWith("@"))
             {
                 return typeof(string);
             }
+            //date için format "dd-mm-yy" şeklinde 
             else if (format.StartsWith("m") || format.StartsWith("d") || format.StartsWith("y"))
             {
                 return typeof(DateTime);
             }
+            //number için [Blue][=1]0; // 0.0 // #.##0 gibi formatlar gelebilir
             else if (format.StartsWith("[") || format.StartsWith("0") ||format.StartsWith("#"))
             {
                 return typeof(float);
