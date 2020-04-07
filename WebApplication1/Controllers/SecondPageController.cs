@@ -560,7 +560,28 @@ namespace WebApplication1.Controllers
                 bool isFormulaCell = worksheet.Cells[cell.RowIndex, cell.ColumnIndex].Formula == "" ? false : true;
                 if (!isFormulaCell)
                 {
-                    worksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
+                    ExcelRange range = worksheet.Cells[cell.RowIndex, cell.ColumnIndex];
+                    try
+                    {
+                        Type type = FindTypeOfCell(range.Style.Numberformat.Format);
+
+                        if (type == typeof(string))
+                        {
+                            range.Value = cell.Data;
+                        }
+                        else if (type == typeof(float))
+                        {
+                            range.Value = float.Parse(cell.Data);
+                        }
+                        else if (type == typeof(DateTime))
+                        {
+                            range.Value = DateTime.Parse(cell.Data);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        range.Value = cell.Data;
+                    }
 
                 }
             }
