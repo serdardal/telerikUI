@@ -290,23 +290,6 @@
     function checkCells() {
         var sheetList = spread.sheets();
 
-        //cell formatının değişip değişmediğinin kontrolü değiştirildiyse uyarıyor ve işlem yaptırmıyor.
-        for (var i = 0; i < dataCellTables.length; i++) {
-            var dataTable = dataCellTables[i];
-            var dataCellList = dataTable.cellList;
-
-            var sheet = sheetList[i];
-
-            for (var j = 0; j < dataCellList.length; j++) {
-                var currentDataCell = dataCellList[j];
-                var currentSheetCellRange = sheet.range(currentDataCell.rowIndex - 1, currentDataCell.columnIndex - 1);
-                if (currentDataCell.format !== null && currentDataCell.format !== currentSheetCellRange.format()) {
-                    window.alert("Wrong cell format: sheet: "+i+" row: " + currentDataCell.rowIndex + " column: "+ currentDataCell.columnIndex + " expected: " + currentDataCell.format + " found: "+ currentSheetCellRange.format())
-                    return false;
-                }
-            }
-        }
-
         //not null cellerin doldurulduğundan emin olur. doldurulmayan varsa işlem yaptırmaz.
         for (var i = 0; i < notNullCellTables.length; i++) {
             notNullTable = notNullCellTables[i];
@@ -325,7 +308,45 @@
             }
         }
 
+        //cell formatının değişip değişmediğinin kontrolü değiştirildiyse uyarıyor ve işlem yaptırmıyor.
+        for (var i = 0; i < dataCellTables.length; i++) {
+            var dataTable = dataCellTables[i];
+            var dataCellList = dataTable.cellList;
+
+            var sheet = sheetList[i];
+
+            for (var j = 0; j < dataCellList.length; j++) {
+                var currentDataCell = dataCellList[j];
+                var currentSheetCellRange = sheet.range(currentDataCell.rowIndex - 1, currentDataCell.columnIndex - 1);
+                if (currentDataCell.format !== null && currentSheetCellRange.value()!==null) {
+                    var valid = checkCellDataType(currentSheetCellRange.value(), currentDataCell.format);
+
+                    if (!valid) {
+                        window.alert("sheet: " + i + ", (" + currentDataCell.rowIndex + "," + currentDataCell.columnIndex + ") in wrong format!");
+                        return false;
+                    }
+                    
+                }
+            }
+        }
+
+        
+
         return true;
+    }
+
+    function checkCellDataType(dataCellValue, format) {
+        if (format.startsWith("@@")) {
+            return typeof (dataCellValue) === typeof ("");
+        }
+        else if (format.startsWith("[") || format.startsWith("#") || format.startsWith("0")) {
+            return typeof (dataCellValue) === typeof (0);
+        }
+        else if (format.startsWith("m") || format.startsWith("d") || format.startsWith("y")) {
+            return typeof (dataCellValue) === typeof (0);
+        }
+
+        return false;
     }
 
 </script>
