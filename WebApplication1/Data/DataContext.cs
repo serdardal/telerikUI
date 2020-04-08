@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using WebApplication1.Models;
+using WebApplication1.Models.DbModels;
 
 namespace WebApplication1.Data
 {
@@ -21,5 +22,7 @@ namespace WebApplication1.Data
         }
 
         public DbSet<CellRecord> CellRecords { get; set; }
+
+        public DbSet<Default> Defaults { get; set; }
     }
 }

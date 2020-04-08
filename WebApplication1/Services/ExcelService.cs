@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using WebApplication1.Data;
 using WebApplication1.Models;
+using WebApplication1.Models.DbModels;
 
 namespace WebApplication1.Services
 {
@@ -35,6 +36,13 @@ namespace WebApplication1.Services
         {
             CellRecord record = _dataContext.CellRecords.FirstOrDefault(x => x.FileName == fileName);
             return record.Date;
+        }
+
+        public List<Default> GetDefaults()
+        {
+            var defaults = _dataContext.Defaults.ToList();
+
+            return defaults;
         }
 
         public List<string> GetSavedFileNames()

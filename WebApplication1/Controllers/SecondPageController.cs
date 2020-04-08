@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using OfficeOpenXml;
 using WebApplication1.Models;
 using WebApplication1.Models.Contracts;
+using WebApplication1.Models.DbModels;
 using WebApplication1.Services;
 
 namespace WebApplication1.Controllers
@@ -41,11 +42,13 @@ namespace WebApplication1.Controllers
         {
             //ship particular değişkenlerin bulunduğu dictionary
             Dictionary<string, string> variableDictionary = new Dictionary<string, string>();
-            variableDictionary.Add("{VesselName}", "Jean Pierre A");
-            variableDictionary.Add("{BuilderNo}", "JP-01");
-            variableDictionary.Add("{SerialNo}", "SN-JP-000999");
-            variableDictionary.Add("{IMONo}", "9379351");
-            variableDictionary.Add("{Company}", "Arkas Holding");
+
+            //databasede kayıtlı değişkenlerin dictionary'e eklenmesi
+            List<Default> defaults = _excelService.GetDefaults();
+            foreach(Default item in defaults)
+            {
+                variableDictionary.Add(item.Key, item.Value);
+            }
 
             List<TableModel> shipParticularCellTables = FindShipParticularCells(templateName);
 

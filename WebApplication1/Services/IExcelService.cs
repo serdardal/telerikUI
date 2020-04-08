@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using WebApplication1.Models;
+using WebApplication1.Models.DbModels;
 
 namespace WebApplication1.Services
 {
@@ -19,5 +20,7 @@ namespace WebApplication1.Services
         List<CellRecord> GetCellRecordsByDocName(string fileName);
 
         List<string> GetSavedFileNames();
+
+        List<Default> GetDefaults();
     }
 }
