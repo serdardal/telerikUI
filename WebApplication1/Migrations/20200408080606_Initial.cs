@@ -18,12 +18,20 @@ namespace WebApplication1.Migrations
                     TableIndex = table.Column<int>(nullable: false),
                     TemplateName = table.Column<string>(nullable: true),
                     FileName = table.Column<string>(nullable: true),
-                    Date = table.Column<DateTime>(nullable: false)
+                    Date = table.Column<DateTime>(nullable: false),
+                    Type = table.Column<string>(nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_CellRecords", x => x.Id);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CellRecords_RowIndex_ColumnIndex_FileName_TableIndex",
+                table: "CellRecords",
+                columns: new[] { "RowIndex", "ColumnIndex", "FileName", "TableIndex" },
+                unique: true,
+                filter: "[FileName] IS NOT NULL");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)

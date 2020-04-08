@@ -352,6 +352,12 @@ namespace WebApplication1.Controllers
                         var value = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value;
                         if (value != null)
                         {
+                            string type = null;
+                            if (cell.Format != null)
+                            {
+                                type = StringTypeFromType(FindTypeOfCell(cell.Format));
+                            }
+
                             newCellRecords.Add(new CellRecord
                             {
                                 RowIndex = cell.RowIndex,
@@ -360,7 +366,8 @@ namespace WebApplication1.Controllers
                                 TableIndex = table.TableIndex,
                                 TemplateName = templateName,
                                 FileName = fileName,
-                                Date = date
+                                Date = date,
+                                Type = type
                             }); ;
                         }
                     }
@@ -405,6 +412,12 @@ namespace WebApplication1.Controllers
                         if (tempCell != null)
                         {
                             string value = tempCell.ToString();
+                            string type = null;
+                            if(cell.Format != null)
+                            {
+                                type = StringTypeFromType(FindTypeOfCell(cell.Format));
+                            }
+
                             newCellRecords.Add(new CellRecord
                             {
                                 RowIndex = cell.RowIndex,
@@ -413,7 +426,8 @@ namespace WebApplication1.Controllers
                                 TableIndex = table.TableIndex,
                                 TemplateName = templateName,
                                 FileName = fileName,
-                                Date = date
+                                Date = date,
+                                Type = type
                             });
                         }
                     }
@@ -433,6 +447,12 @@ namespace WebApplication1.Controllers
                         if (tempCell != null)
                         {
                             string value = tempCell.ToString();
+                            string type = null;
+                            if (cell.Format != null)
+                            {
+                                type = StringTypeFromType(FindTypeOfCell(cell.Format));
+                            }
+
                             newCellRecords.Add(new CellRecord
                             {
                                 RowIndex = cell.RowIndex,
@@ -441,7 +461,8 @@ namespace WebApplication1.Controllers
                                 TableIndex = formulaTable.TableIndex,
                                 TemplateName = templateName,
                                 FileName = fileName,
-                                Date = date
+                                Date = date,
+                                Type = type
                             });
                         }
                     }
@@ -688,16 +709,27 @@ namespace WebApplication1.Controllers
                             if (formula != "")
                             {
                                 var value = currentCell.Value;
-                                formulaCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString()});
+                                var format = currentCell.Style.Numberformat.Format;
+                                if(format == "General")
+                                {
+                                    format = null;
+                                }
+
+                                formulaCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format});
                             }
 
                             if (!locked)
                             {
                                 var value = currentCell.Value;
+                                var format = currentCell.Style.Numberformat.Format;
+                                if (format == "General")
+                                {
+                                    format = null;
+                                }
 
                                 if (!merged) //data celldir
                                 {
-                                    dataCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString()});
+                                    dataCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format});
                                 }
                                 else
                                 {
@@ -711,7 +743,7 @@ namespace WebApplication1.Controllers
 
                                     if (masterCell.Start.Row == i && masterCell.Start.Column == j) //sol üstteki celldeyiz, data celldir.
                                     {
-                                        dataCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString()});
+                                        dataCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format});
                                     }
                                 }
                             }
@@ -742,6 +774,24 @@ namespace WebApplication1.Controllers
             }
 
             return typeof(string);
+        }
+
+        private string StringTypeFromType(Type type)
+        {
+            if (type == typeof(string))
+            {
+                return "text";
+            }
+            else if (type == typeof(float))
+            {
+                return "number";
+            }
+            else if (type == typeof(DateTime))
+            {
+                return "date";
+            }
+
+            return null;
         }
     }
 }

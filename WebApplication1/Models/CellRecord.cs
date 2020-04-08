@@ -25,5 +25,7 @@ namespace WebApplication1.Models
         public string FileName { get; set; }
 
         public DateTime Date { get; set; }
+
+        public string Type { get; set; }
     }
 }

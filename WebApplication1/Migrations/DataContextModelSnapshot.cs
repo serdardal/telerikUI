@@ -3,17 +3,15 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebApplication1.Data;
 
 namespace WebApplication1.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20200315180137_Initial")]
-    partial class Initial
+    partial class DataContextModelSnapshot : ModelSnapshot
     {
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -40,7 +38,13 @@ namespace WebApplication1.Migrations
 
                     b.Property<string>("TemplateName");
 
+                    b.Property<string>("Type");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("RowIndex", "ColumnIndex", "FileName", "TableIndex")
+                        .IsUnique()
+                        .HasFilter("[FileName] IS NOT NULL");
 
                     b.ToTable("CellRecords");
                 });
