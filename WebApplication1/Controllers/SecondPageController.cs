@@ -539,6 +539,7 @@ namespace WebApplication1.Controllers
             ExcelPackage excelPackage = new ExcelPackage(fi);
 
             RemoveExcelShapesFromExcelPackage(excelPackage);
+            RemoveEndMarksFrowWorkBook(excelPackage.Workbook, templateName);
 
             ExcelWorkbook excelWorkBook = excelPackage.Workbook;
 
@@ -585,6 +586,7 @@ namespace WebApplication1.Controllers
             FileInfo fi = new FileInfo(templatePath);
             ExcelPackage excelPackage = new ExcelPackage(fi);
             RemoveExcelShapesFromExcelPackage(excelPackage);
+            RemoveEndMarksFrowWorkBook(excelPackage.Workbook, templateName);
 
             return excelPackage;
         }
@@ -602,6 +604,7 @@ namespace WebApplication1.Controllers
             ExcelPackage excelPackage = new ExcelPackage(fi);
 
             ExcelWorkbook excelWorkBook = excelPackage.Workbook;
+            RemoveEndMarksFrowWorkBook(excelWorkBook, templateName);
 
             //şablon databasedeki kayıtlı hücreler ile doldurulur.
             foreach (CellRecord cell in cells)
@@ -912,6 +915,20 @@ namespace WebApplication1.Controllers
                 _excelService.AddEndMarks(endMarks);
 
                 return endMarks;
+            }
+        }
+
+        private void RemoveEndMarksFrowWorkBook(ExcelWorkbook workBook, string templateName)
+        {
+            List<EndMark> endMarks = _excelService.GetEndMarksofTemplate(templateName);
+
+            ExcelWorksheets excelWorksheets = workBook.Worksheets;
+
+            foreach(EndMark endMark in endMarks)
+            {
+                ExcelWorksheet worksheet = excelWorksheets[endMark.SheetIndex];
+
+                worksheet.Cells[endMark.RowIndex, endMark.ColumnIndex].Value = null;
             }
         }
     }
