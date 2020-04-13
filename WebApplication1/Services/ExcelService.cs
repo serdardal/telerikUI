@@ -80,5 +80,23 @@ namespace WebApplication1.Services
             _dataContext.SaveChanges();
             return true;
         }
+
+        public bool AddEndMarks(List<EndMark> endMarks)
+        {
+            if(endMarks.Count > 0)
+            {
+                _dataContext.EndMarks.AddRange(endMarks);
+                _dataContext.SaveChanges();
+            }
+           
+            return true;
+        }
+
+        public List<EndMark> GetEndMarksofTemplate(string templateName)
+        {
+            var endmarks = _dataContext.EndMarks.Where(x => x.TemplateName == templateName).ToList();
+
+            return endmarks;
+        }
     }
 }

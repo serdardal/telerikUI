@@ -24,5 +24,7 @@ namespace WebApplication1.Data
         public DbSet<CellRecord> CellRecords { get; set; }
 
         public DbSet<Default> Defaults { get; set; }
+
+        public DbSet<EndMark> EndMarks { get; set; }
     }
 }

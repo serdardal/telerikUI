@@ -128,6 +128,14 @@ namespace WebApplication1.Controllers
             {
                 ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
 
+                //endmarkların bulunması
+                var endMarks = _excelService.GetEndMarksofTemplate(templateName);
+                if(endMarks.Count == 0)
+                {
+                    endMarks = FindEndMarksInTemplate(templateName);
+                }
+
+                //sheetlerin gezilmesi
                 for (int k = 0; k < worksheetList.Count; k++)
                 {
                     var currentWorksheet = worksheetList[k];
@@ -139,10 +147,28 @@ namespace WebApplication1.Controllers
                     mergedDataCells.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
 
                     List<string> mergedCellList = currentWorksheet.MergedCells.ToList();
-                    //kilitli olmayan ve merge edilmemiş hücreleri bulur ve listeye ekler
-                    for (int i = 1; i < 300; i++) //satır
+
+                    //bir sheet için {END} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
+                    int countOfRowsToSearch = 300;
+                    int countOfColumnsToSearch = 300;
+
+                    //aranacak sınırın belirlenmesi
+                    if(endMarks.Count > 0)
                     {
-                        for (int j = 1; j < 300; j++) //sütun
+                        foreach(EndMark endMark in endMarks)
+                        {
+                            if(endMark.SheetIndex == k)
+                            {
+                                countOfRowsToSearch = endMark.RowIndex;
+                                countOfColumnsToSearch = endMark.ColumnIndex;
+                            }
+                        }
+                    }
+
+                    //kilitli olmayan ve merge edilmemiş hücreleri bulur ve listeye ekler
+                    for (int i = 1; i < countOfRowsToSearch; i++) //satır
+                    {
+                        for (int j = 1; j < countOfColumnsToSearch; j++) //sütun
                         {
                             var currentCell = currentWorksheet.Cells[i, j];
                             bool locked = currentCell.Style.Locked;
@@ -651,15 +677,41 @@ namespace WebApplication1.Controllers
             {
                 ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
 
+                //endmarkların bulunması
+                var endMarks = _excelService.GetEndMarksofTemplate(templateName);
+                if (endMarks.Count == 0)
+                {
+                    endMarks = FindEndMarksInTemplate(templateName);
+                }
+
+                //sheetlerin gezilmesi
                 for (int k = 0; k < worksheetList.Count; k++)
                 {
                     var currentWorksheet = worksheetList[k];
 
                     shipParticularCellTables.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
 
-                    for (int i = 1; i < 300; i++) //satır
+                    //bir sheet için {END} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
+                    int countOfRowsToSearch = 300;
+                    int countOfColumnsToSearch = 300;
+
+                    //aranacak sınırın belirlenmesi
+                    if (endMarks.Count > 0)
                     {
-                        for (int j = 1; j < 300; j++) //sütun
+                        foreach (EndMark endMark in endMarks)
+                        {
+                            if (endMark.SheetIndex == k)
+                            {
+                                countOfRowsToSearch = endMark.RowIndex;
+                                countOfColumnsToSearch = endMark.ColumnIndex;
+                            }
+                        }
+                    }
+
+                    //ship particular değişkenlerin aranması
+                    for (int i = 1; i < countOfRowsToSearch; i++) //satır
+                    {
+                        for (int j = 1; j < countOfColumnsToSearch; j++) //sütun
                         {
                             var currentCell = currentWorksheet.Cells[i, j];
                             bool locked = currentCell.Style.Locked;
@@ -668,7 +720,7 @@ namespace WebApplication1.Controllers
                             {
                                 var value = currentCell.Value;
 
-                                if (value != null && value.ToString() != "{NN}" && value.ToString().StartsWith("{") && value.ToString().EndsWith("}"))
+                                if (value != null && value.ToString() != "{NN}" && value.ToString() != "{END}" && value.ToString().StartsWith("{") && value.ToString().EndsWith("}"))
                                 {
                                     shipParticularCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value.ToString()});
                                 }
@@ -692,6 +744,14 @@ namespace WebApplication1.Controllers
             {
                 ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
 
+                //endmarkların bulunması
+                var endMarks = _excelService.GetEndMarksofTemplate(templateName);
+                if (endMarks.Count == 0)
+                {
+                    endMarks = FindEndMarksInTemplate(templateName);
+                }
+
+                //sheetlerin gezilmesi
                 for (int k = 0; k < worksheetList.Count; k++)
                 {
                     var currentWorksheet = worksheetList[k];
@@ -699,9 +759,27 @@ namespace WebApplication1.Controllers
                     dataCellTables.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
                     formulaCellTables.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
 
-                    for (int i = 1; i < 300; i++) //satır
+                    //bir sheet için {END} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
+                    int countOfRowsToSearch = 300;
+                    int countOfColumnsToSearch = 300;
+
+                    //aranacak sınırın belirlenmesi
+                    if (endMarks.Count > 0)
                     {
-                        for (int j = 1; j < 300; j++) //sütun
+                        foreach (EndMark endMark in endMarks)
+                        {
+                            if (endMark.SheetIndex == k)
+                            {
+                                countOfRowsToSearch = endMark.RowIndex;
+                                countOfColumnsToSearch = endMark.ColumnIndex;
+                            }
+                        }
+                    }
+
+                    //cellerin aranması
+                    for (int i = 1; i < countOfRowsToSearch; i++) //satır
+                    {
+                        for (int j = 1; j < countOfColumnsToSearch; j++) //sütun
                         {
                             var currentCell = currentWorksheet.Cells[i, j];
                             bool locked = currentCell.Style.Locked;
@@ -795,6 +873,46 @@ namespace WebApplication1.Controllers
             }
 
             return null;
+        }
+
+        private List<EndMark> FindEndMarksInTemplate(string templateName)
+        {
+            List<EndMark> endMarks = new List<EndMark>();
+
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
+            FileInfo fi = new FileInfo(path);
+            using (ExcelPackage excelPackage = new ExcelPackage(fi))
+            {
+                ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
+
+                for (int k = 0; k < worksheetList.Count; k++) //sheet index
+                {
+                    var currentWorksheet = worksheetList[k];
+                    bool found = false;
+
+                    for (int j = 1; j < 300; j++)// column index
+                    {
+                        if (found) break;
+
+                        for (int i = 1; i < 300; i++)//row index
+                        {
+                            var currentCell = currentWorksheet.Cells[i, j];
+                            var value = currentCell.Value;
+
+                            if(value != null && value.ToString() == "{END}")
+                            {
+                                endMarks.Add(new EndMark { TemplateName = templateName, SheetIndex = k, RowIndex = i, ColumnIndex = j }); ;                                found = true;
+
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                _excelService.AddEndMarks(endMarks);
+
+                return endMarks;
+            }
         }
     }
 }

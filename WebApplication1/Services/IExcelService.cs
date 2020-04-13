@@ -22,5 +22,9 @@ namespace WebApplication1.Services
         List<string> GetSavedFileNames();
 
         List<Default> GetDefaults();
+
+        bool AddEndMarks(List<EndMark> endMarks);
+
+        List<EndMark> GetEndMarksofTemplate(string templateName);
     }
 }
