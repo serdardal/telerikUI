@@ -339,6 +339,9 @@
         else if (format.startsWith("m") || format.startsWith("d") || format.startsWith("y")) {
             return typeof (dataCellValue) === typeof (0);
         }
+        else if (format.startsWith("h")) {
+            return typeof (dataCellValue) === typeof (0);
+        }
 
         return false;
     }

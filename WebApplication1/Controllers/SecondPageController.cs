@@ -384,7 +384,7 @@ namespace WebApplication1.Controllers
                             string type = null;
                             if (cell.Format != null)
                             {
-                                type = StringTypeFromType(FindTypeOfCell(cell.Format));
+                                type = FindTypeOfCell(cell.Format);
                             }
 
                             newCellRecords.Add(new CellRecord
@@ -444,7 +444,7 @@ namespace WebApplication1.Controllers
                             string type = null;
                             if(cell.Format != null)
                             {
-                                type = StringTypeFromType(FindTypeOfCell(cell.Format));
+                                type = FindTypeOfCell(cell.Format);
                             }
 
                             newCellRecords.Add(new CellRecord
@@ -479,7 +479,7 @@ namespace WebApplication1.Controllers
                             string type = null;
                             if (cell.Format != null)
                             {
-                                type = StringTypeFromType(FindTypeOfCell(cell.Format));
+                                type = FindTypeOfCell(cell.Format);
                             }
 
                             newCellRecords.Add(new CellRecord
@@ -553,19 +553,27 @@ namespace WebApplication1.Controllers
                     ExcelRange range = worksheet.Cells[cell.RowIndex, cell.ColumnIndex];
                     try
                     {
-                        Type type = FindTypeOfCell(range.Style.Numberformat.Format);
+                        string type = FindTypeOfCell(range.Style.Numberformat.Format);
 
-                        if(type == typeof(string))
+                        if(type == "text")
                         {
                             range.Value = cell.Data;
                         }
-                        else if (type == typeof(float))
+                        else if (type == "number")
                         {
-                            range.Value = float.Parse(cell.Data);
+                            range.Value = double.Parse(cell.Data);
                         }
-                        else if (type == typeof(DateTime))
+                        else if (type == "date")
                         {
                             range.Value = DateTime.Parse(cell.Data);
+                        }
+                        else if (type == "time")
+                        {
+                            range.Value = double.Parse(cell.Data);
+                        }
+                        else
+                        {
+                            range.Value = cell.Data;
                         }
                     }
                     catch (Exception)
@@ -616,19 +624,27 @@ namespace WebApplication1.Controllers
                     ExcelRange range = worksheet.Cells[cell.RowIndex, cell.ColumnIndex];
                     try
                     {
-                        Type type = FindTypeOfCell(range.Style.Numberformat.Format);
+                        string type = FindTypeOfCell(range.Style.Numberformat.Format);
 
-                        if (type == typeof(string))
+                        if (type == "text")
                         {
                             range.Value = cell.Data;
                         }
-                        else if (type == typeof(float))
+                        else if (type == "number")
                         {
-                            range.Value = float.Parse(cell.Data);
+                            range.Value = double.Parse(cell.Data);
                         }
-                        else if (type == typeof(DateTime))
+                        else if (type == "date")
                         {
                             range.Value = DateTime.Parse(cell.Data);
+                        }
+                        else if (type == "time")
+                        {
+                            range.Value = double.Parse(cell.Data);
+                        }
+                        else
+                        {
+                            range.Value = cell.Data;
                         }
                     }
                     catch (Exception)
@@ -839,40 +855,27 @@ namespace WebApplication1.Controllers
             return new DataAndFormulaCellsModel { DataCellTables = dataCellTables, FormulaCellTables = formulaCellTables };
         }
 
-        private Type FindTypeOfCell(string format)
+        private string FindTypeOfCell(string format)
         {
             //text için format "@"
             if (format.StartsWith("@"))
             {
-                return typeof(string);
+                return "text";
             }
             //date için format "dd-mm-yy" şeklinde 
             else if (format.StartsWith("m") || format.StartsWith("d") || format.StartsWith("y"))
             {
-                return typeof(DateTime);
+                return "date";
             }
             //number için [Blue][=1]0; // 0.0 // #.##0 gibi formatlar gelebilir
             else if (format.StartsWith("[") || format.StartsWith("0") ||format.StartsWith("#"))
             {
-                return typeof(float);
-            }
-
-            return typeof(string);
-        }
-
-        private string StringTypeFromType(Type type)
-        {
-            if (type == typeof(string))
-            {
-                return "text";
-            }
-            else if (type == typeof(float))
-            {
                 return "number";
             }
-            else if (type == typeof(DateTime))
+            //hour için "hh:mm:ss" şeklinde
+            else if (format.StartsWith("h"))
             {
-                return "date";
+                return "time";
             }
 
             return null;
