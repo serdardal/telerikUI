@@ -104,6 +104,7 @@
     var dataCellTables;
     var notNullCellTables;
     var currentTemplateName;
+    var endMarks;
 
     kendo.culture("tr-TR");
 
@@ -282,7 +283,7 @@
                     dataCellTables[i].cellList = dataCellTables[i].cellList.concat(datas.mergedDataCellTables[i].cellList);
                 }
                 notNullCellTables = datas.notNullCellTables;
-                
+                endMarks = datas.endMarks;
             }
         })
 
@@ -332,67 +333,45 @@
 
     function checkCells() {
         var sheetList = spread.sheets();
+        var valid = true;
+        var invalidCellList = [];
 
-        //not null cellerin doldurulduğundan emin olur. doldurulmayan varsa işlem yaptırmaz.
-        for (var i = 0; i < notNullCellTables.length; i++) {
-            notNullTable = notNullCellTables[i];
-            notNullCellList = notNullTable.cellList;
-
+        for (var i = 0; i < sheetList.length; i++) {
             var sheet = sheetList[i];
+            var range = sheet.range('A1:JX300');
 
-            for (var j = 0; j < notNullCellList.length; j++) {
-                var currentNotNullCell = notNullCellList[j];
-                var currentSheetCellRange = sheet.range(currentNotNullCell.rowIndex - 1, currentNotNullCell.columnIndex - 1);
-
-                if (currentSheetCellRange.value() === null || currentSheetCellRange.value() === "{NN}") {
-                    window.alert("sheet: "+i+", (" + currentNotNullCell.rowIndex + "," + currentNotNullCell.columnIndex + ") cannot be empty!");
-                    return false;
-                }
+            if (endMarks.length > 0) {
+                var rowIndex = endMarks[i].rowIndex;
+                var columnIndex = endMarks[i].columnIndex;
+                range = sheet.range(0, 0, rowIndex, columnIndex);
             }
-        }
 
-        //cell formatının değişip değişmediğinin kontrolü değiştirildiyse uyarıyor ve işlem yaptırmıyor.
-        for (var i = 0; i < dataCellTables.length; i++) {
-            var dataTable = dataCellTables[i];
-            var dataCellList = dataTable.cellList;
+            range.forEachCell(function (row, column, cell) {
+                if (cell.validation && !cell.validation.value) {
+                    if (valid) valid = false;
 
-            var sheet = sheetList[i];
-
-            for (var j = 0; j < dataCellList.length; j++) {
-                var currentDataCell = dataCellList[j];
-                var currentSheetCellRange = sheet.range(currentDataCell.rowIndex - 1, currentDataCell.columnIndex - 1);
-                if (currentDataCell.format !== null && currentSheetCellRange.value()!==null) {
-                    var valid = checkCellDataType(currentSheetCellRange.value(), currentDataCell.format);
-
-                    if (!valid) {
-                        window.alert("sheet: " + i + ", (" + currentDataCell.rowIndex + "," + currentDataCell.columnIndex + ") in wrong format!");
-                        return false;
-                    }
-                    
+                    invalidCellList.push({
+                        sheetIndex : i,
+                        row : row,
+                        column : column
+                    })
                 }
+            });
+        }
+
+        if (!valid) {
+            var alertMessage = "These cells have invalid values: \n\n";
+
+            for (var i = 0; i < invalidCellList.length; i++) {
+                var invalidCell = invalidCellList[i];
+                var message = "sheet index: " + invalidCell.sheetIndex + ", row: " + invalidCell.row + ", column: " + invalidCell.column + "\n";
+                alertMessage += message;
             }
+
+            window.alert(alertMessage);
         }
 
-        
-
-        return true;
-    }
-
-    function checkCellDataType(dataCellValue, format) {
-        if (format.startsWith("@@")) {
-            return typeof (dataCellValue) === typeof ("");
-        }
-        else if (format.startsWith("[") || format.startsWith("#") || format.startsWith("0")) {
-            return typeof (dataCellValue) === typeof (0);
-        }
-        else if (format.startsWith("m") || format.startsWith("d") || format.startsWith("y")) {
-            return typeof (dataCellValue) === typeof (0);
-        }
-        else if (format.startsWith("h")) {
-            return typeof (dataCellValue) === typeof (0);
-        }
-
-        return false;
+        return valid;
     }
 
 </script>

@@ -122,6 +122,7 @@ namespace WebApplication1.Controllers
             List<TableModel> shipParticularCells = new List<TableModel>();
             List<MergeTableModel> mergedTables = new List<MergeTableModel>();
             List<TableModel> mergedDataCells = new List<TableModel>();
+            List<EndMark> endMarks = new List<EndMark>();
 
             FileInfo fi = new FileInfo(path);
             using (ExcelPackage excelPackage = new ExcelPackage(fi))
@@ -129,11 +130,12 @@ namespace WebApplication1.Controllers
                 ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
 
                 //endmarkların bulunması
-                var endMarks = _excelService.GetEndMarksofTemplate(templateName);
-                if(endMarks.Count == 0)
+                var endMarkRecords = _excelService.GetEndMarksofTemplate(templateName);
+                if(endMarkRecords.Count == 0)
                 {
-                    endMarks = FindEndMarksInTemplate(templateName);
+                    endMarkRecords = FindEndMarksInTemplate(templateName);
                 }
+                endMarks = endMarkRecords;
 
                 //sheetlerin gezilmesi
                 for (int k = 0; k < worksheetList.Count; k++)
@@ -153,9 +155,9 @@ namespace WebApplication1.Controllers
                     int countOfColumnsToSearch = 300;
 
                     //aranacak sınırın belirlenmesi
-                    if(endMarks.Count > 0)
+                    if(endMarkRecords.Count > 0)
                     {
-                        foreach(EndMark endMark in endMarks)
+                        foreach(EndMark endMark in endMarkRecords)
                         {
                             if(endMark.SheetIndex == k)
                             {
@@ -243,7 +245,8 @@ namespace WebApplication1.Controllers
                 MergedDataCellTables = mergedDataCells,
                 NotNullCellTables = notNullCells,
                 ShipParticularCellTables = shipParticularCells,
-                MergedRangesTables = mergedTables
+                MergedRangesTables = mergedTables,
+                EndMarks = endMarks,
             };
             return Ok(response);
         }
