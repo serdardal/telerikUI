@@ -150,14 +150,14 @@
         openTemplate(selected);
     }
 
-    function handleSelectSavedFile() {
+    async function handleSelectSavedFile() {
         var readonly = $("#readonlyCheckbox").is(":checked")
         var selected = $('#savedFileNames option:selected').val()
         if (readonly) {
-            openSavedFileReadOnly(selected)
+            await openSavedFileReadOnly(selected)
             $('#updateButton').hide()
         } else {
-            openSavedFileEditMode(selected)
+            await openSavedFileEditMode(selected)
             $('#updateButton').show()
         }
 
@@ -171,6 +171,13 @@
         $('#saveButton').hide()
         $('#exportProtectedButton').show()
     }
+
+    function getData(ajaxurl) { 
+        return $.ajax({
+            url: ajaxurl,
+            method: "get",
+        });
+    };
 
     function openTemplate(name) {
         $.ajax({
@@ -193,24 +200,42 @@
         $('#exportProtectedButton').hide()
     }
 
-    function openSavedFileReadOnly(name) {
-        $.ajax({
-            url: '/SecondPage/GetSavedFileByName/'+name,
-            method: "get",
-            success: function (data) {
-                spread.fromFile(b64toBlob(data)).then(() => lockAllCells());
-            }
-        })
+    async function openSavedFileReadOnly(name) {
+        var url = '/SecondPage/GetSavedFileByName/' + name;
+
+        try {
+            var response = await getData(url);
+            await spread.fromFile(b64toBlob(response));
+            lockAllCells();
+        }
+        catch (err)
+        {
+            console.log(err);
+        }
+
+        //$.ajax({
+        //    url: '/SecondPage/GetSavedFileByName/'+name,
+        //    method: "get",
+        //    success: function (data) {
+        //        spread.fromFile(b64toBlob(data)).then(() => lockAllCells());
+        //    }
+        //})
     }
 
-    function openSavedFileEditMode(name) {
-        $.ajax({
-            url: '/SecondPage/GetSavedFileByName/'+name,
-            method: "get",
-            success: function (data) {
-                spread.fromFile(b64toBlob(data)).then(() => lockAllCells()).then(() => unlockCells(name,false));
-            }
-        })
+    async function openSavedFileEditMode(name) {
+        var url = '/SecondPage/GetSavedFileByName/' + name;
+
+        try {
+            var response = await getData(url);
+            await spread.fromFile(b64toBlob(response));
+            lockAllCells();
+            await unlockCells(name, false);
+            colorCustomFormattedCells();
+        }
+        catch (err)
+        {
+            console.log(err);
+        }
     }
 
     function b64toBlob(dataURI) {
@@ -236,10 +261,10 @@
 
     }
 
-    function unlockCells(docName, isTemplate) {
+    async function unlockCells(docName, isTemplate) {
         var data = { documentName: docName, isTemplate: isTemplate };
 
-        $.ajax({
+        await $.ajax({
             url: '/SecondPage/GetUnlockedCells/',
             method: "post",
             contentType: "application/json",
@@ -470,6 +495,21 @@
 
         // ileride condition rengine göre renk döndürebilir. şimdilik sarı döndürüyor.
         return {fullfills: false, color:"yellow"};
+    }
+
+    function colorCustomFormattedCells() {
+        var sheetList = spread.sheets();
+
+        for (let i = 0; i < customFormattedCellTables.length; i++) {
+            var currentTable = customFormattedCellTables[i];
+            var currentSheetList = sheetList[i];
+
+            for (let j = 0; j < currentTable.cellList.length; j++) {
+                var cell = currentTable.cellList[j];
+                var range = currentSheetList.range(cell.rowIndex - 1, cell.columnIndex - 1);
+                checkCustomFormattedCells(range, i);
+            }
+        }
     }
 
 </script>
