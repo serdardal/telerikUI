@@ -148,16 +148,27 @@
     function handleSelectTemplate() {
         var selected = $('#templateNames option:selected').val()
         openTemplate(selected);
+
+        currentTemplateName = selected;
+
+        $('#nameInput').val("");
+        $('#nameInput').prop('disabled', false);
+
+        $('#dateInput').prop('disabled', false);
+
+        $('#saveButton').show()
+        $('#updateButton').hide()
+        $('#exportProtectedButton').hide()
     }
 
-    async function handleSelectSavedFile() {
+    function handleSelectSavedFile() {
         var readonly = $("#readonlyCheckbox").is(":checked")
         var selected = $('#savedFileNames option:selected').val()
         if (readonly) {
-            await openSavedFileReadOnly(selected)
+            openSavedFileReadOnly(selected)
             $('#updateButton').hide()
         } else {
-            await openSavedFileEditMode(selected)
+            openSavedFileEditMode(selected)
             $('#updateButton').show()
         }
 
@@ -179,25 +190,18 @@
         });
     };
 
-    function openTemplate(name) {
-        $.ajax({
-            url: '/SecondPage/GetTemplateByName/'+name,
-            method: "get",
-            success: function (data) {
-                spread.fromFile(b64toBlob(data)).then(() => lockAllCells()).then(() => unlockCells(name,true));
-            }
-        })
+    async function openTemplate(name) {
+        var url = '/SecondPage/GetTemplateByName/' + name;
 
-        currentTemplateName = name;
-
-        $('#nameInput').val("");
-        $('#nameInput').prop('disabled', false);
-
-        $('#dateInput').prop('disabled', false);
-
-        $('#saveButton').show()
-        $('#updateButton').hide()
-        $('#exportProtectedButton').hide()
+        try {
+            var response = await getData(url);
+            await spread.fromFile(b64toBlob(response));
+            lockAllCells();
+            await unlockCells(name, true);
+        }
+        catch (err) {
+            console.log(err);
+        }
     }
 
     async function openSavedFileReadOnly(name) {
