@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Deneme.Models;
 using Microsoft.AspNetCore.Mvc;
 using OfficeOpenXml;
+using OfficeOpenXml.Style;
 using WebApplication1.Models;
 using WebApplication1.Models.Contracts;
 using WebApplication1.Models.DbModels;
@@ -262,14 +264,17 @@ namespace WebApplication1.Controllers
             return Ok(response);
         }
 
-        [HttpGet("SecondPage/GetProtectedSavedFileByName/{fileName}")]
-        public string GetProtectedSavedFileByName(string fileName)
+        [HttpPost("SecondPage/GetProtectedSavedFileByName/{fileName}")]
+        public string GetProtectedSavedFileByName(string fileName, [FromBody] List<ColoredCellModel> coloredCellList)
         {
             //protected olarak export etmede kullanılır.
             byte[] fileByteArray = { };
 
             using (ExcelPackage excelPackage = GetSavedExcelPackageWithShapesByName(fileName))
             {
+                //zemin rengi değiştirilecek hücrelerin işlenmesi
+                ColorCells(excelPackage.Workbook, coloredCellList);
+
                 ExcelWorksheets sheetList = excelPackage.Workbook.Worksheets;
 
                 //sheetler için protect ayarları
@@ -1021,6 +1026,20 @@ namespace WebApplication1.Controllers
                 ExcelWorksheet worksheet = excelWorksheets[endMark.SheetIndex];
 
                 worksheet.Cells[endMark.RowIndex, endMark.ColumnIndex].Value = null;
+            }
+        }
+
+        private void ColorCells(ExcelWorkbook workBook, List<ColoredCellModel> coloredCells)
+        {
+            ExcelWorksheets excelWorksheets = workBook.Worksheets;
+
+            foreach(ColoredCellModel coloredCell in coloredCells)
+            {
+                ExcelWorksheet worksheet = excelWorksheets[coloredCell.SheetIndex];
+
+                Color color = ColorTranslator.FromHtml(coloredCell.Color);
+                worksheet.Cells[coloredCell.RowIndex, coloredCell.ColumnIndex].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                worksheet.Cells[coloredCell.RowIndex, coloredCell.ColumnIndex].Style.Fill.BackgroundColor.SetColor(color);
             }
         }
     }

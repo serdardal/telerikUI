@@ -165,11 +165,13 @@
         var readonly = $("#readonlyCheckbox").is(":checked")
         var selected = $('#savedFileNames option:selected').val()
         if (readonly) {
-            openSavedFileReadOnly(selected)
-            $('#updateButton').hide()
+            openSavedFileReadOnly(selected);
+            $('#updateButton').hide();
+            $('#exportProtectedButton').show();
         } else {
             openSavedFileEditMode(selected)
             $('#updateButton').show()
+            $('#exportProtectedButton').hide();
         }
 
         currentTemplateName = "";
@@ -180,7 +182,6 @@
         $('#dateInput').prop('disabled', true);
 
         $('#saveButton').hide()
-        $('#exportProtectedButton').show()
     }
 
     function getData(ajaxUrl) { 
@@ -537,8 +538,8 @@
                 var range = sheet.range(cell.rowIndex -1 , cell.columnIndex -1);
                 var conditions = cell.format.split(";");
 
-                for (let i = 0; i < conditions.length; i++) {
-                        var currentCondition = conditions[i];
+                for (let k = 0; k < conditions.length; k++) {
+                        var currentCondition = conditions[k];
                         if (currentCondition.startsWith("[")) {
                             var response = isFullfillsTheCondition(range.values()[0][0], currentCondition);
                             //conditionun sağlanıyor olması istenmeyen bir durum o yüzden renklendir
