@@ -183,12 +183,21 @@
         $('#exportProtectedButton').show()
     }
 
-    function getData(ajaxurl) { 
+    function getData(ajaxUrl) { 
         return $.ajax({
-            url: ajaxurl,
+            url: ajaxUrl,
             method: "get",
         });
     };
+
+    function postData(ajaxUrl, data) {
+        return $.ajax({
+            url: ajaxUrl,
+            method: "post",
+            contentType: "application/json",
+            data: JSON.stringify(data),
+        });
+    }
 
     async function openTemplate(name) {
         var url = '/SecondPage/GetTemplateByName/' + name;
@@ -345,18 +354,21 @@
         }
     }
 
-    function exportProtected() {
+    async function exportProtected() {
         var docName = $("#nameInput").val();
-        $.ajax({
-            url: '/SecondPage/GetProtectedSavedFileByName/' + docName,
-            method: "get",
-            success: function (data) {
-                const element = document.createElement('a');
-                element.download = docName;
-                element.href = URL.createObjectURL(b64toBlob(data));
-                element.click();
-            }
-        })
+        var coloredCells = getColoredCells()
+        var url = '/SecondPage/GetProtectedSavedFileByName/' + docName;
+
+        try {
+            var response = await postData(url, coloredCells);
+            const element = document.createElement('a');
+            element.download = docName;
+            element.href = URL.createObjectURL(b64toBlob(response));
+            element.click();
+        }
+        catch (err) {
+            console.log(err);
+        }
     }
 
     function checkCells() {
@@ -510,6 +522,41 @@
                 checkCustomFormattedCells(range, i);
             }
         }
+    }
+
+    function getColoredCells() {
+        var coloredCells = [];
+        var sheetList = spread.sheets();
+
+        for (let i = 0; i < customFormattedCellTables.length; i++) {
+            var table = customFormattedCellTables[i];
+            var sheet = sheetList[i];
+
+            for (let j = 0; j < table.cellList.length; j++) {
+                var cell = table.cellList[j];
+                var range = sheet.range(cell.rowIndex -1 , cell.columnIndex -1);
+                var conditions = cell.format.split(";");
+
+                for (let i = 0; i < conditions.length; i++) {
+                        var currentCondition = conditions[i];
+                        if (currentCondition.startsWith("[")) {
+                            var response = isFullfillsTheCondition(range.values()[0][0], currentCondition);
+                            //conditionun sağlanıyor olması istenmeyen bir durum o yüzden renklendir
+                            if (response.fullfills) {
+                                coloredCells.push({
+                                    sheetIndex : i,
+                                    rowIndex : cell.rowIndex,
+                                    columnIndex : cell.columnIndex,
+                                    color : response.color
+                                });
+                                break;
+                            }
+                        }
+                    }
+            }
+        }
+
+        return coloredCells;
     }
 
 </script>
