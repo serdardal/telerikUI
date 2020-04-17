@@ -99,6 +99,7 @@
                 sheet.range(mergeInitialRow, mergedInitialCol, mergedNumberOfRows, mergedNumberOfCols).merge();
             }
         },
+        change: onChange,
     });
     var spread = $('#spreadsheet').getKendoSpreadsheet();
     var dataCellTables;
@@ -372,6 +373,13 @@
         }
 
         return valid;
+    }
+
+    function onChange(arg) {
+        var range = arg.range;
+        range.forEachCell(function (row, column, cell) {
+            console.log(`Değer değişti! Row: ${row}, Column: ${column}, Yeni Değer: ${cell.value}`);
+        });
     }
 
 </script>
