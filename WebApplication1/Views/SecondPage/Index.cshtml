@@ -379,9 +379,97 @@
 
     function onChange(arg) {
         var range = arg.range;
+        var sheetList = spread.sheets();
+        var currentSheet = spread.activeSheet();
+        var currentSheetIndex;
+
+        for (let i = 0; i < sheetList.length; i++) {
+            var list = sheetList[i];
+            if (list === currentSheet) currentSheetIndex = i;
+        }
+
+        if (currentSheetIndex >= 0) {
+            checkCustomFormattedCells(range, currentSheetIndex);
+        }
+        
+    }
+
+    function checkCustomFormattedCells(range, currentSheetIndex) {
         range.forEachCell(function (row, column, cell) {
-            console.log(`Değer değişti! Row: ${row}, Column: ${column}, Yeni Değer: ${cell.value}`);
+            var currentCustomFormattedCellSheet = customFormattedCellTables[currentSheetIndex];
+            for (let i = 0; i < currentCustomFormattedCellSheet.cellList.length; i++) {
+                var currentCustomFormattedCell = currentCustomFormattedCellSheet.cellList[i];
+                //eger değiştirilen range içerisinde custom format verilmiş cell var ise
+                if (currentCustomFormattedCell.rowIndex === row+1 && currentCustomFormattedCell.columnIndex === column+1) {
+                    console.log(`Değer değişti! Row: ${row + 1}, Column: ${column + 1}, Yeni Değer: ${cell.value}`);
+
+                    var conditions = currentCustomFormattedCell.format.split(";");
+                    for (let i = 0; i < conditions.length; i++) {
+                        var currentCondition = conditions[i];
+                        if (currentCondition.startsWith("[")) {
+                            var response = isFullfillsTheCondition(cell.value, currentCondition);
+                            //conditionun sağlanıyor olması istenmeyen bir durum o yüzden renklendir
+                            if (response.fullfills) {
+                                colorCell(currentSheetIndex, row, column, response.color);
+                                break;
+                            } else {
+                                colorCell(currentSheetIndex, row, column, "white");
+                            }
+                        }
+                    }
+                }
+            }
         });
+    }
+
+    function colorCell(sheetIndex, rowIndex, columnIndex, color) {
+        var sheetList = spread.sheets();
+        var sheet = sheetList[sheetIndex];
+
+        sheet.range(rowIndex, columnIndex).background(color);
+    }
+
+    function isFullfillsTheCondition(value, condition) {
+        var firstSquareBracketOpenIndex = condition.indexOf("[");
+        var firstSquareBracketCloseIndex = condition.indexOf("]", firstSquareBracketOpenIndex);
+        var secondSquareBracketOpenIndex = condition.indexOf("[", firstSquareBracketCloseIndex);
+        var secondSquareBracketCloseIndex = condition.indexOf("]", secondSquareBracketOpenIndex);
+
+        var conditionContent = condition.substring(secondSquareBracketOpenIndex +1, secondSquareBracketCloseIndex);
+        var conditionNumber;
+        if (conditionContent.startsWith(">=")) {
+            conditionNumber = condition.substring(secondSquareBracketOpenIndex + 3, secondSquareBracketCloseIndex);
+            if (value >= Number(conditionNumber)) {
+                return { fullfills: true, color: "yellow" };
+            }
+        }
+        else if (conditionContent.startsWith("<=")) {
+            conditionNumber = condition.substring(secondSquareBracketOpenIndex + 3, secondSquareBracketCloseIndex);
+            if (value <= Number(conditionNumber)) {
+                return { fullfills: true, color: "yellow" };
+            }
+        }
+        else if (conditionContent.startsWith(">")){
+            conditionNumber = condition.substring(secondSquareBracketOpenIndex + 2, secondSquareBracketCloseIndex);
+            if (value > Number(conditionNumber)) {
+                return { fullfills: true, color: "yellow" };
+            }
+        }
+        else if (conditionContent.startsWith("<")){
+            conditionNumber = condition.substring(secondSquareBracketOpenIndex + 2, secondSquareBracketCloseIndex);
+            if (value < Number(conditionNumber)) {
+                return { fullfills: true, color: "yellow" };
+            }
+        }
+        else if (conditionContent.startsWith("=")){
+            conditionNumber = condition.substring(secondSquareBracketOpenIndex + 2, secondSquareBracketCloseIndex);
+            if (value === Number(conditionNumber)) {
+                return { fullfills: true, color: "yellow" };
+            }
+        }
+
+        // ileride condition rengine göre renk döndürebilir. şimdilik sarı döndürüyor.
+        return {fullfills: false, color:"yellow"};
     }
 
 </script>
