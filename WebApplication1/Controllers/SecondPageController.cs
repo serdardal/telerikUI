@@ -299,6 +299,14 @@ namespace WebApplication1.Controllers
             return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
         }
 
+        [HttpGet("SecondPage/GetCustomFormattedCellsByName/{fileName}")]
+        public IActionResult GetCustomFormattedCellsByName(string fileName)
+        {
+            string templateName = _excelService.GetTemplateName(fileName);
+            List<TableModel> customFormattedCellTables = FindCustomFormattedCells(templateName);
+            return Ok(customFormattedCellTables);
+        }
+
         public ActionResult SaveFileToTemp(string contentType, string base64, string fileName)
         {
             //dosya kayıt edilirse veya update edilirse Temp klasörü altına kaydedilir.
@@ -764,6 +772,73 @@ namespace WebApplication1.Controllers
             }
 
             return shipParticularCellTables;
+        }
+
+        private List<TableModel> FindCustomFormattedCells(string templateName)
+        {
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
+            List<TableModel> customFormattedCellTables = new List<TableModel>();
+
+            FileInfo fi = new FileInfo(path);
+            using (ExcelPackage excelPackage = new ExcelPackage(fi))
+            {
+                ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
+
+                //endmarkların bulunması
+                var endMarks = _excelService.GetEndMarksofTemplate(templateName);
+                if (endMarks.Count == 0)
+                {
+                    endMarks = FindEndMarksInTemplate(templateName);
+                }
+
+                //sheetlerin gezilmesi
+                for (int k = 0; k < worksheetList.Count; k++)
+                {
+                    var currentWorksheet = worksheetList[k];
+
+                    customFormattedCellTables.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
+
+                    //bir sheet için {END} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
+                    int countOfRowsToSearch = 300;
+                    int countOfColumnsToSearch = 300;
+
+                    //aranacak sınırın belirlenmesi
+                    if (endMarks.Count > 0)
+                    {
+                        foreach (EndMark endMark in endMarks)
+                        {
+                            if (endMark.SheetIndex == k)
+                            {
+                                countOfRowsToSearch = endMark.RowIndex;
+                                countOfColumnsToSearch = endMark.ColumnIndex;
+                            }
+                        }
+                    }
+
+                    //ship particular değişkenlerin aranması
+                    for (int i = 1; i < countOfRowsToSearch; i++) //satır
+                    {
+                        for (int j = 1; j < countOfColumnsToSearch; j++) //sütun
+                        {
+                            var currentCell = currentWorksheet.Cells[i, j];
+                            bool locked = currentCell.Style.Locked;
+
+                            if (!locked)
+                            {
+                                var value = currentCell.Value;
+                                string format = currentCell.Style.Numberformat.Format;
+
+                                if (format.StartsWith("["))
+                                {
+                                    customFormattedCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null? null : value.ToString(), Format = format });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+                return customFormattedCellTables;
         }
 
         private DataAndFormulaCellsModel FindDataAndFormulaCells(string templateName)

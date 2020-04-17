@@ -202,24 +202,20 @@
 
     async function openSavedFileReadOnly(name) {
         var url = '/SecondPage/GetSavedFileByName/' + name;
+        var customCellsUrl = '/SecondPage/GetCustomFormattedCellsByName/' + name;
 
         try {
             var response = await getData(url);
             await spread.fromFile(b64toBlob(response));
             lockAllCells();
+            var customCellsResponse = await getData(customCellsUrl);
+            customFormattedCellTables = customCellsResponse;
+            colorCustomFormattedCells();
         }
         catch (err)
         {
             console.log(err);
         }
-
-        //$.ajax({
-        //    url: '/SecondPage/GetSavedFileByName/'+name,
-        //    method: "get",
-        //    success: function (data) {
-        //        spread.fromFile(b64toBlob(data)).then(() => lockAllCells());
-        //    }
-        //})
     }
 
     async function openSavedFileEditMode(name) {
