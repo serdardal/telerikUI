@@ -21,5 +21,7 @@ namespace WebApplication1.Models.Contracts
 
         public List<EndMark> EndMarks { get; set; }
 
+        public List<TableModel> CustomFormattedCellTables { get; set; }
+
     }
 }

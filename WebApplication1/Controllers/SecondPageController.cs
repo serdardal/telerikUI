@@ -123,6 +123,7 @@ namespace WebApplication1.Controllers
             List<MergeTableModel> mergedTables = new List<MergeTableModel>();
             List<TableModel> mergedDataCells = new List<TableModel>();
             List<EndMark> endMarks = new List<EndMark>();
+            List<TableModel> customFormattedCells = new List<TableModel>();
 
             FileInfo fi = new FileInfo(path);
             using (ExcelPackage excelPackage = new ExcelPackage(fi))
@@ -147,6 +148,7 @@ namespace WebApplication1.Controllers
                     shipParticularCells.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
                     mergedTables.Add(new MergeTableModel { TableIndex = k, MergedCellList = new List<string>() });
                     mergedDataCells.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
+                    customFormattedCells.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
 
                     List<string> mergedCellList = currentWorksheet.MergedCells.ToList();
 
@@ -198,6 +200,14 @@ namespace WebApplication1.Controllers
                                 {
                                     format = null;
                                 }
+                                else if(format.StartsWith("[")) {
+                                    customFormattedCells[k].CellList.Add(new FilledCellModel { 
+                                        RowIndex = i, 
+                                        ColumnIndex = j, 
+                                        Value = value == null ? null : value.ToString(), 
+                                        Format = format 
+                                    });
+                                }
 
 
                                 if (!merged) //data celldir
@@ -247,6 +257,7 @@ namespace WebApplication1.Controllers
                 ShipParticularCellTables = shipParticularCells,
                 MergedRangesTables = mergedTables,
                 EndMarks = endMarks,
+                CustomFormattedCellTables = customFormattedCells,
             };
             return Ok(response);
         }
