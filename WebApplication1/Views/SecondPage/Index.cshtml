@@ -22,7 +22,7 @@
 
             <button onclick="exportProtected()" id="exportProtectedButton" hidden>Export Protected</button>
             <label id="changePicLabel" hidden>ChangePicture:</label>
-            <input type="checkbox" id="changePicCheckbox" hidden/>
+            <input type="checkbox" id="changePicCheckbox" hidden onchange="handleChangePicCheckChange()"/>
 
             <div>
                 <div style="float:left; margin-left:10px">
@@ -386,6 +386,40 @@
         }
 
         return valid;
+    }
+
+    function handleChangePicCheckChange() {
+        //var change = $("#changePicCheckbox").is(":checked");
+
+        //if (change) {
+        //    changePicture("bimar.jpg");
+        //}
+        //else {
+        //    changePicture("arkas.jpg");
+        //}
+    }
+
+    function changePicture(picName) {
+        var sheetList = spread.sheets();
+        var firstSheet = sheetList[0];
+
+        $.ajax({
+            url: '/SecondPage/GetPictureByName/' + picName,
+            method: "get",
+            success: function (data) {
+
+                var drawing = kendo.spreadsheet.Drawing.fromJSON({
+                    topLeftCell: "J6",
+                    offsetX: 30,
+                    offsetY: 10,
+                    width: 320,
+                    height: 220,
+                    image: spread.addImage(data)
+                });
+
+                firstSheet.addDrawing(drawing);
+            }
+        })
     }
 
 </script>

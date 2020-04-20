@@ -295,6 +295,21 @@ namespace WebApplication1.Controllers
             return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
         }
 
+        [HttpGet("SecondPage/GetPictureByName/{picName}")]
+        public string GetPictureByName(string picName)
+        {
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "Images", picName);
+            byte[] fileByteArray = { };
+
+            using (Image image = Image.FromFile(path))
+            {
+                fileByteArray = System.IO.File.ReadAllBytes(path);
+            }
+
+            string file = Convert.ToBase64String(fileByteArray);
+            return "data:image/jpg;base64," + file;
+        }
+
         public ActionResult SaveFileToTemp(string contentType, string base64, string fileName)
         {
             //dosya kayıt edilirse veya update edilirse Temp klasörü altına kaydedilir.
@@ -965,7 +980,7 @@ namespace WebApplication1.Controllers
                 //drawinglerin imageları değiştiriliyor, geri kalan ayarları değişmemiş oluyor.
                 foreach (OfficeOpenXml.Drawing.ExcelPicture changingDrawing in changeList)
                 {
-                    using (Image newImage = Image.FromFile(Path.Combine(Directory.GetCurrentDirectory(), "Images" , "arkas2.jpg")))
+                    using (Image newImage = Image.FromFile(Path.Combine(Directory.GetCurrentDirectory(), "Images" , "bimar.jpg")))
                     {
                         changingDrawing.Image = newImage;
                     }
