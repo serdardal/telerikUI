@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -251,15 +252,21 @@ namespace WebApplication1.Controllers
             return Ok(response);
         }
 
-        [HttpGet("SecondPage/GetProtectedSavedFileByName/{fileName}")]
-        public string GetProtectedSavedFileByName(string fileName)
+        [HttpPost]
+        public string GetProtectedSavedFileByName([FromBody] ExportRequestModel exportModel)
         {
+            string fileName = exportModel.FileName;
             //protected olarak export etmede kullanılır.
             byte[] fileByteArray = { };
 
             using (ExcelPackage excelPackage = GetSavedExcelPackageWithShapesByName(fileName))
             {
                 ExcelWorksheets sheetList = excelPackage.Workbook.Worksheets;
+
+                if (exportModel.ChangePic)
+                {
+                    ChangePicture(excelPackage.Workbook);
+                }
 
                 //sheetler için protect ayarları
                 foreach (ExcelWorksheet sheet in sheetList)
@@ -935,6 +942,34 @@ namespace WebApplication1.Controllers
                 ExcelWorksheet worksheet = excelWorksheets[endMark.SheetIndex];
 
                 worksheet.Cells[endMark.RowIndex, endMark.ColumnIndex].Value = null;
+            }
+        }
+
+        private void ChangePicture(ExcelWorkbook workBook)
+        {
+            ExcelWorksheets excelWorksheets = workBook.Worksheets;
+
+            foreach (ExcelWorksheet worksheet in excelWorksheets)
+            {
+                List<OfficeOpenXml.Drawing.ExcelDrawing> changeList = new List<OfficeOpenXml.Drawing.ExcelDrawing>();
+
+                //degistirilecek drawinglerin bulunması
+                foreach (OfficeOpenXml.Drawing.ExcelDrawing drawing in worksheet.Drawings)
+                {
+                    if(drawing.Name.StartsWith("Logo"))
+                    {
+                        changeList.Add(drawing);
+                    }
+                }
+
+                //drawinglerin imageları değiştiriliyor, geri kalan ayarları değişmemiş oluyor.
+                foreach (OfficeOpenXml.Drawing.ExcelPicture changingDrawing in changeList)
+                {
+                    using (Image newImage = Image.FromFile(Path.Combine(Directory.GetCurrentDirectory(), "Images" , "arkas2.jpg")))
+                    {
+                        changingDrawing.Image = newImage;
+                    }
+                }
             }
         }
     }

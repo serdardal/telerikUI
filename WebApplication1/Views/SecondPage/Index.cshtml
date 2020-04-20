@@ -318,13 +318,17 @@
     }
 
     function exportProtected() {
-        var docName = $("#nameInput").val();
+        var fileName = $("#nameInput").val();
+
+        var data = {fileName: fileName, changePic: true}
         $.ajax({
-            url: '/SecondPage/GetProtectedSavedFileByName/' + docName,
-            method: "get",
+            url: '/SecondPage/GetProtectedSavedFileByName/',
+            method: "post",
+            contentType: "application/json",
+            data: JSON.stringify(data),
             success: function (data) {
                 const element = document.createElement('a');
-                element.download = docName;
+                element.download = fileName;
                 element.href = URL.createObjectURL(b64toBlob(data));
                 element.click();
             }
