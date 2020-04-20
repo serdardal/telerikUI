@@ -19,7 +19,11 @@
             <input type="checkbox" checked id="readonlyCheckbox" />
         </div>
         <div style="width:80%; float:left">
+
             <button onclick="exportProtected()" id="exportProtectedButton" hidden>Export Protected</button>
+            <label id="changePicLabel" hidden>ChangePicture:</label>
+            <input type="checkbox" id="changePicCheckbox" hidden/>
+
             <div>
                 <div style="float:left; margin-left:10px">
                     <label>Name:</label>
@@ -168,6 +172,8 @@
 
         $('#saveButton').hide()
         $('#exportProtectedButton').show()
+        $('#changePicCheckbox').show()
+        $('#changePicLabel').show()
     }
 
     function openTemplate(name) {
@@ -189,6 +195,8 @@
         $('#saveButton').show()
         $('#updateButton').hide()
         $('#exportProtectedButton').hide()
+        $('#changePicCheckbox').hide()
+        $('#changePicLabel').hide()
     }
 
     function openSavedFileReadOnly(name) {
@@ -320,7 +328,9 @@
     function exportProtected() {
         var fileName = $("#nameInput").val();
 
-        var data = {fileName: fileName, changePic: true}
+        var change = $("#changePicCheckbox").is(":checked");
+
+        var data = { fileName: fileName, changePic: change };
         $.ajax({
             url: '/SecondPage/GetProtectedSavedFileByName/',
             method: "post",
