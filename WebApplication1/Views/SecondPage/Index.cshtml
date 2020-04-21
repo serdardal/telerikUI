@@ -1,4 +1,5 @@
-﻿
+﻿@model WebApplication1.Models.IndexModel
+
 @{
     ViewData["Title"] = "Index";
 }
@@ -17,6 +18,7 @@
             <button id="selectSavedFile" onclick="handleSelectSavedFile()">Open Saved File</button>
             <label>Readonly:</label>
             <input type="checkbox" checked id="readonlyCheckbox" />
+            <button id="openInNewTabButton" onclick="handleOpenInNewTab()">Open In New Tab</button>
         </div>
         <div style="width:80%; float:left">
             <button onclick="exportProtected()" id="exportProtectedButton" hidden>Export Protected</button>
@@ -128,6 +130,29 @@
             loadSavedFileNames(data)
         }
     })
+
+    if ("@Model.OpenInNewTab" === "True") {
+        
+        if ("@Model.ReadOnly" === "True") {
+            openSavedFileReadOnly("@Model.FileName");
+            $('#updateButton').hide();
+            $('#exportProtectedButton').show();
+        } else {
+            openSavedFileEditMode("@Model.FileName");
+            $('#updateButton').show()
+            $('#exportProtectedButton').hide();
+        }
+
+        currentTemplateName = "";
+
+        $('#nameInput').val("@Model.FileName");
+        $('#nameInput').prop('disabled', true);
+
+        $('#dateInput').prop('disabled', true);
+
+        $('#saveButton').hide()
+
+    }
 
     function loadTemplateNames(names) {
         names.map((name) => {
@@ -558,6 +583,16 @@
         }
 
         return coloredCells;
+    }
+
+    function handleOpenInNewTab() {
+        var selected = $('#savedFileNames option:selected').val();
+        if (selected !== undefined) {
+            var readonly = $("#readonlyCheckbox").is(":checked")
+
+            var url = '/SecondPage/OpenFileReadonlyInNewTab/' + selected + '/' + readonly;
+            window.open(url, '_blank');
+        }
     }
 
 </script>

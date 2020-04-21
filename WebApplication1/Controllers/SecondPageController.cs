@@ -25,7 +25,8 @@ namespace WebApplication1.Controllers
         }
         public IActionResult Index()
         {
-            return View();
+            IndexModel model = new IndexModel { OpenInNewTab = false };
+            return View(model);
         }
 
         [HttpGet]
@@ -312,6 +313,12 @@ namespace WebApplication1.Controllers
             return Ok(customFormattedCellTables);
         }
 
+        [HttpGet("SecondPage/OpenFileReadonlyInNewTab/{fileName}/{readOnly}")]
+        public IActionResult OpenFileReadonlyInNewTab(string fileName, bool readOnly) {
+            IndexModel model = new IndexModel { OpenInNewTab = true, FileName = fileName, ReadOnly = readOnly };
+            return View("Index", model);
+        }
+
         public ActionResult SaveFileToTemp(string contentType, string base64, string fileName)
         {
             //dosya kayıt edilirse veya update edilirse Temp klasörü altına kaydedilir.
@@ -324,7 +331,9 @@ namespace WebApplication1.Controllers
             //dosya kaydedildikten sonra üzerindeki veriler database ile senkronize edilir.
             SyncDataWithDB(fileName);
 
-            return View("Index");
+            IndexModel model = new IndexModel { OpenInNewTab = false };
+
+            return View("Index", model);
         }
 
         private void SyncDataWithDB(string fileName)
