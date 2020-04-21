@@ -22,6 +22,8 @@
         </div>
         <div style="width:80%; float:left">
             <button onclick="exportProtected()" id="exportProtectedButton" hidden>Export Protected</button>
+            <label id="changePicLabel" hidden>ChangePicture:</label>
+            <input type="checkbox" id="changePicCheckbox" hidden/>
             <div>
                 <div style="float:left; margin-left:10px">
                     <label>Name:</label>
@@ -137,10 +139,14 @@
             openSavedFileReadOnly("@Model.FileName");
             $('#updateButton').hide();
             $('#exportProtectedButton').show();
+            $('#changePicCheckbox').show()
+            $('#changePicLabel').show()
         } else {
             openSavedFileEditMode("@Model.FileName");
             $('#updateButton').show()
             $('#exportProtectedButton').hide();
+            $('#changePicCheckbox').hide()
+            $('#changePicLabel').hide()
         }
 
         currentTemplateName = "";
@@ -184,6 +190,9 @@
         $('#saveButton').show()
         $('#updateButton').hide()
         $('#exportProtectedButton').hide()
+
+        $('#changePicCheckbox').hide()
+        $('#changePicLabel').hide()
     }
 
     function handleSelectSavedFile() {
@@ -193,10 +202,14 @@
             openSavedFileReadOnly(selected);
             $('#updateButton').hide();
             $('#exportProtectedButton').show();
+            $('#changePicCheckbox').show()
+            $('#changePicLabel').show()
         } else {
             openSavedFileEditMode(selected)
             $('#updateButton').show()
             $('#exportProtectedButton').hide();
+            $('#changePicCheckbox').hide()
+            $('#changePicLabel').hide()
         }
 
         currentTemplateName = "";
@@ -383,10 +396,14 @@
     async function exportProtected() {
         var docName = $("#nameInput").val();
         var coloredCells = getColoredCells()
-        var url = '/SecondPage/GetProtectedSavedFileByName/' + docName;
+        var url = '/SecondPage/GetProtectedSavedFileByName/';
+
+        var change = $("#changePicCheckbox").is(":checked");
+
+        var data = { fileName: docName, changePic: change, coloredCellList: coloredCells}
 
         try {
-            var response = await postData(url, coloredCells);
+            var response = await postData(url, data);
             const element = document.createElement('a');
             element.download = docName;
             element.href = URL.createObjectURL(b64toBlob(response));

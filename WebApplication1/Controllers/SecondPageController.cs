@@ -265,9 +265,12 @@ namespace WebApplication1.Controllers
             return Ok(response);
         }
 
-        [HttpPost("SecondPage/GetProtectedSavedFileByName/{fileName}")]
-        public string GetProtectedSavedFileByName(string fileName, [FromBody] List<ColoredCellModel> coloredCellList)
+        [HttpPost]
+        public string GetProtectedSavedFileByName([FromBody] ExportRequestModel exportModel)
         {
+            string fileName = exportModel.FileName;
+            List<ColoredCellModel> coloredCellList = exportModel.ColoredCellList;
+
             //protected olarak export etmede kullanılır.
             byte[] fileByteArray = { };
 
@@ -277,6 +280,11 @@ namespace WebApplication1.Controllers
                 ColorCells(excelPackage.Workbook, coloredCellList);
 
                 ExcelWorksheets sheetList = excelPackage.Workbook.Worksheets;
+
+                if (exportModel.ChangePic)
+                {
+                    ChangePicture(excelPackage.Workbook);
+                }
 
                 //sheetler için protect ayarları
                 foreach (ExcelWorksheet sheet in sheetList)
@@ -1049,6 +1057,34 @@ namespace WebApplication1.Controllers
                 Color color = ColorTranslator.FromHtml(coloredCell.Color);
                 worksheet.Cells[coloredCell.RowIndex, coloredCell.ColumnIndex].Style.Fill.PatternType = ExcelFillStyle.Solid;
                 worksheet.Cells[coloredCell.RowIndex, coloredCell.ColumnIndex].Style.Fill.BackgroundColor.SetColor(color);
+            }
+        }
+
+        private void ChangePicture(ExcelWorkbook workBook)
+        {
+            ExcelWorksheets excelWorksheets = workBook.Worksheets;
+
+            foreach (ExcelWorksheet worksheet in excelWorksheets)
+            {
+                List<OfficeOpenXml.Drawing.ExcelDrawing> changeList = new List<OfficeOpenXml.Drawing.ExcelDrawing>();
+
+                //degistirilecek drawinglerin bulunması
+                foreach (OfficeOpenXml.Drawing.ExcelDrawing drawing in worksheet.Drawings)
+                {
+                    if (drawing.Name.StartsWith("Logo"))
+                    {
+                        changeList.Add(drawing);
+                    }
+                }
+
+                //drawinglerin imageları değiştiriliyor, geri kalan ayarları değişmemiş oluyor.
+                foreach (OfficeOpenXml.Drawing.ExcelPicture changingDrawing in changeList)
+                {
+                    using (Image newImage = Image.FromFile(Path.Combine(Directory.GetCurrentDirectory(), "Images", "bimar.jpg")))
+                    {
+                        changingDrawing.Image = newImage;
+                    }
+                }
             }
         }
     }
