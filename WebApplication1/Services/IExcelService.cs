@@ -26,5 +26,9 @@ namespace WebApplication1.Services
         bool AddEndMarks(List<EndMark> endMarks);
 
         List<EndMark> GetEndMarksofTemplate(string templateName);
+
+        List<CellRecord> GetAllRecords();
+
+        bool ClearAllRecords();
     }
 }
