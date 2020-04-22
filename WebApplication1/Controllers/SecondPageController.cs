@@ -328,8 +328,11 @@ namespace WebApplication1.Controllers
             return View("Index", model);
         }
 
-        public ActionResult SaveFileToTemp(string contentType, string base64, string fileName)
+        [HttpPost]
+        public ActionResult SaveFileToTemp([FromBody] SaveFileToTempRequestModel requestModel)
         {
+            string base64 = requestModel.Base64;
+            string fileName = requestModel.FileName;
             //dosya kayıt edilirse veya update edilirse Temp klasörü altına kaydedilir.
 
             //Temp klasörü yok ise oluştur.
