@@ -10,6 +10,8 @@
             <select id="templateNames" style="width: 100%; height: 35%; overflow-x: auto" multiple>
             </select>
             <button id="selectTemplate" onclick="handleSelectTemplate()">Open Template</button>
+            <label >BimarLogo:</label>
+            <input type="checkbox" id="bimarLogoCheckbox" />
 
             <hr />
 
@@ -22,8 +24,6 @@
         </div>
         <div style="width:80%; float:left">
             <button onclick="exportProtected()" id="exportProtectedButton" hidden>Export Protected</button>
-            <label id="changePicLabel" hidden>ChangePicture:</label>
-            <input type="checkbox" id="changePicCheckbox" hidden/>
             <div>
                 <div style="float:left; margin-left:10px">
                     <label>Name:</label>
@@ -46,16 +46,44 @@
             var height = window.innerHeight;
             e.sender.element.innerHeight(height-100);
         },
-        excel: {
-            proxyURL: '@Url.Action("SaveFileToTemp", "SecondPage")',
-            forceProxy: true
-        },
-        excelExport: function (e) {
+        excelExport: async function (e) {
             var fileName = $("#nameInput").val();
             if (currentTemplateName !== "") {
                 fileName = currentTemplateName.replace(".xlsx", "") + "_" + $("#nameInput").val() + "_" + $("#dateInput").val();
             }
-            e.workbook.fileName = fileName;
+
+            // Prevent the default behavior which will prompt the user to save the generated file.
+            e.preventDefault();
+
+            //resimlerin kaldırılması
+            //resimler kaldırılmadan toDataURL() çalıştırılırsa patlıyor
+            var sheets = e.workbook.sheets;
+            for (var i = 0; i < sheets.length; i++) {
+                var sheet = sheets[i];
+                sheet.drawings = [];
+            }
+
+            // Get the Excel file as a data URL.
+            var workbook = new kendo.ooxml.Workbook(e.workbook);
+            var dataURL = workbook.toDataURL();
+
+            // Strip the data URL prologue.
+            var base64 = dataURL.split(";base64,")[1];
+
+            var logoName = logo === "" ? null : logo;
+
+            var url = "/SecondPage/SaveFileToTemp"
+            var data = { base64: base64, fileName: fileName, logoName: logoName };
+
+            // Post the base64 encoded content to the server which can save it.
+            try {
+                var response = await postData(url, data);
+                window.location.reload(false);
+            }
+            catch (e) {
+                console.log(e);
+            }
+            
         },
         paste: function (e) {
             // yapıştırılırken sadece değerin yapıştırılması, formatın bozulmaması
@@ -110,6 +138,7 @@
     var currentTemplateName;
     var endMarks;
     var customFormattedCellTables;
+    var logo = "";
 
     kendo.culture("tr-TR");
 
@@ -138,14 +167,10 @@
             openSavedFileReadOnly("@Model.FileName");
             $('#updateButton').hide();
             $('#exportProtectedButton').show();
-            $('#changePicCheckbox').show()
-            $('#changePicLabel').show()
         } else {
             openSavedFileEditMode("@Model.FileName");
             $('#updateButton').show()
             $('#exportProtectedButton').hide();
-            $('#changePicCheckbox').hide()
-            $('#changePicLabel').hide()
         }
 
         currentTemplateName = "";
@@ -177,7 +202,13 @@
 
     function handleSelectTemplate() {
         var selected = $('#templateNames option:selected').val()
-        openTemplate(selected);
+
+        if ($("#bimarLogoCheckbox").is(":checked")) {
+            logo = "bimar.jpg"
+        } else {
+            logo = "";
+        }
+        openTemplate(selected, logo);
 
         currentTemplateName = selected;
 
@@ -190,8 +221,6 @@
         $('#updateButton').hide()
         $('#exportProtectedButton').hide()
 
-        $('#changePicCheckbox').hide()
-        $('#changePicLabel').hide()
     }
 
     function handleSelectSavedFile() {
@@ -201,14 +230,10 @@
             openSavedFileReadOnly(selected);
             $('#updateButton').hide();
             $('#exportProtectedButton').show();
-            $('#changePicCheckbox').show()
-            $('#changePicLabel').show()
         } else {
             openSavedFileEditMode(selected)
             $('#updateButton').show()
             $('#exportProtectedButton').hide();
-            $('#changePicCheckbox').hide()
-            $('#changePicLabel').hide()
         }
 
         currentTemplateName = "";
@@ -237,11 +262,11 @@
         });
     }
 
-    async function openTemplate(name) {
-        var url = '/SecondPage/GetTemplateByName/' + name;
-
+    async function openTemplate(name, logoName) {
+        var url = '/SecondPage/GetTemplateByName/';
+        var data = { templateName: name, logoName: logoName };
         try {
-            var response = await getData(url);
+            var response = await postData(url,data);
             await spread.fromFile(b64toBlob(response));
             lockAllCells();
             await unlockCells(name, true);
@@ -386,6 +411,8 @@
     }
 
     function handleUpdateButton() {
+        logo = "";
+
         var res = checkCells();
         if (res) {
             spread.saveAsExcel();
@@ -397,9 +424,7 @@
         var coloredCells = getColoredCells()
         var url = '/SecondPage/GetProtectedSavedFileByName/';
 
-        var change = $("#changePicCheckbox").is(":checked");
-
-        var data = { fileName: docName, changePic: change, coloredCellList: coloredCells}
+        var data = { fileName: docName, coloredCellList: coloredCells}
 
         try {
             var response = await postData(url, data);

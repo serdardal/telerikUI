@@ -116,5 +116,12 @@ namespace WebApplication1.Services
 
             return deleted > 0;
         }
+
+        public string GetLogoByName(string fileName)
+        {
+            var record = _dataContext.CellRecords.Where(x => x.FileName == fileName).FirstOrDefault();
+
+            return record.Logo;
+        }
     }
 }

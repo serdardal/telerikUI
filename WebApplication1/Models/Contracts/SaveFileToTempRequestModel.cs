@@ -5,9 +5,10 @@ using System.Threading.Tasks;
 
 namespace WebApplication1.Models.Contracts
 {
-    public class ExportRequestModel
+    public class SaveFileToTempRequestModel
     {
+        public string Base64 { get; set; }
         public string FileName { get; set; }
-        public List<ColoredCellModel> ColoredCellList { get; set; }
+        public string LogoName { get; set; }
     }
 }

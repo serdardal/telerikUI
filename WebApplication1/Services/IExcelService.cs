@@ -30,5 +30,7 @@ namespace WebApplication1.Services
         List<CellRecord> GetAllRecords();
 
         bool ClearAllRecords();
+
+        string GetLogoByName(string fileName);
     }
 }

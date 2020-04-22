@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 
 namespace WebApplication1.Models.Contracts
 {
-    public class ExportRequestModel
+    public class OpenTemplateRequestModel
     {
-        public string FileName { get; set; }
-        public List<ColoredCellModel> ColoredCellList { get; set; }
+        public string TemplateName { get; set; }
+        public string LogoName { get; set; }
     }
 }
