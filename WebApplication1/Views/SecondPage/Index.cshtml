@@ -76,6 +76,7 @@
             // Post the base64 encoded content to the server which can save it.
             try {
                 var response = await postData(url, data);
+                window.location.reload(false);
             }
             catch (e) {
                 console.log(e);
