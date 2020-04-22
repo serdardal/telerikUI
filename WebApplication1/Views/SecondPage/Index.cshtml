@@ -10,6 +10,8 @@
             <select id="templateNames" style="width: 100%; height: 35%; overflow-x: auto" multiple>
             </select>
             <button id="selectTemplate" onclick="handleSelectTemplate()">Open Template</button>
+            <label >BimarLogo:</label>
+            <input type="checkbox" id="bimarLogoCheckbox" />
 
             <hr />
 
@@ -22,8 +24,6 @@
         </div>
         <div style="width:80%; float:left">
             <button onclick="exportProtected()" id="exportProtectedButton" hidden>Export Protected</button>
-            <label id="changePicLabel" hidden>ChangePicture:</label>
-            <input type="checkbox" id="changePicCheckbox" hidden/>
             <div>
                 <div style="float:left; margin-left:10px">
                     <label>Name:</label>
@@ -138,14 +138,10 @@
             openSavedFileReadOnly("@Model.FileName");
             $('#updateButton').hide();
             $('#exportProtectedButton').show();
-            $('#changePicCheckbox').show()
-            $('#changePicLabel').show()
         } else {
             openSavedFileEditMode("@Model.FileName");
             $('#updateButton').show()
             $('#exportProtectedButton').hide();
-            $('#changePicCheckbox').hide()
-            $('#changePicLabel').hide()
         }
 
         currentTemplateName = "";
@@ -177,7 +173,11 @@
 
     function handleSelectTemplate() {
         var selected = $('#templateNames option:selected').val()
-        openTemplate(selected);
+        var logoName = "";
+        if ($("#bimarLogoCheckbox").is(":checked")) {
+            logoName="bimar.jpg"
+        }
+        openTemplate(selected, logoName);
 
         currentTemplateName = selected;
 
@@ -190,8 +190,6 @@
         $('#updateButton').hide()
         $('#exportProtectedButton').hide()
 
-        $('#changePicCheckbox').hide()
-        $('#changePicLabel').hide()
     }
 
     function handleSelectSavedFile() {
@@ -201,14 +199,10 @@
             openSavedFileReadOnly(selected);
             $('#updateButton').hide();
             $('#exportProtectedButton').show();
-            $('#changePicCheckbox').show()
-            $('#changePicLabel').show()
         } else {
             openSavedFileEditMode(selected)
             $('#updateButton').show()
             $('#exportProtectedButton').hide();
-            $('#changePicCheckbox').hide()
-            $('#changePicLabel').hide()
         }
 
         currentTemplateName = "";
@@ -237,11 +231,11 @@
         });
     }
 
-    async function openTemplate(name) {
-        var url = '/SecondPage/GetTemplateByName/' + name;
-
+    async function openTemplate(name, logoName) {
+        var url = '/SecondPage/GetTemplateByName/';
+        var data = { templateName: name, logoName: logoName };
         try {
-            var response = await getData(url);
+            var response = await postData(url,data);
             await spread.fromFile(b64toBlob(response));
             lockAllCells();
             await unlockCells(name, true);
@@ -397,9 +391,7 @@
         var coloredCells = getColoredCells()
         var url = '/SecondPage/GetProtectedSavedFileByName/';
 
-        var change = $("#changePicCheckbox").is(":checked");
-
-        var data = { fileName: docName, changePic: change, coloredCellList: coloredCells}
+        var data = { fileName: docName, coloredCellList: coloredCells}
 
         try {
             var response = await postData(url, data);

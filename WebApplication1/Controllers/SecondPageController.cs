@@ -40,9 +40,10 @@ namespace WebApplication1.Controllers
             return Ok(excelFiles);
         }
 
-        [HttpGet("SecondPage/GetTemplateByName/{templateName}")]
-        public string GetTemplateByName(string templateName)
+        [HttpPost]
+        public string GetTemplateByName([FromBody] OpenTemplateRequestModel requestModel)
         {
+            string templateName = requestModel.TemplateName;
             //ship particular değişkenlerin bulunduğu dictionary
             Dictionary<string, string> variableDictionary = new Dictionary<string, string>();
 
@@ -60,6 +61,11 @@ namespace WebApplication1.Controllers
             using (ExcelPackage excelPackage = GetExcelPackageByTeplateName(templateName))
             {
                 ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
+
+                if (!string.IsNullOrEmpty(requestModel.LogoName))
+                {
+                    ChangePicture(excelPackage.Workbook, requestModel.LogoName);
+                }
 
                 for (int i = 0; i < shipParticularCellTables.Count; i++)
                 {
@@ -280,11 +286,6 @@ namespace WebApplication1.Controllers
                 ColorCells(excelPackage.Workbook, coloredCellList);
 
                 ExcelWorksheets sheetList = excelPackage.Workbook.Worksheets;
-
-                if (exportModel.ChangePic)
-                {
-                    ChangePicture(excelPackage.Workbook);
-                }
 
                 //sheetler için protect ayarları
                 foreach (ExcelWorksheet sheet in sheetList)
@@ -1060,7 +1061,7 @@ namespace WebApplication1.Controllers
             }
         }
 
-        private void ChangePicture(ExcelWorkbook workBook)
+        private void ChangePicture(ExcelWorkbook workBook, string logoName)
         {
             ExcelWorksheets excelWorksheets = workBook.Worksheets;
 
@@ -1080,7 +1081,7 @@ namespace WebApplication1.Controllers
                 //drawinglerin imageları değiştiriliyor, geri kalan ayarları değişmemiş oluyor.
                 foreach (OfficeOpenXml.Drawing.ExcelPicture changingDrawing in changeList)
                 {
-                    using (Image newImage = Image.FromFile(Path.Combine(Directory.GetCurrentDirectory(), "Images", "bimar.jpg")))
+                    using (Image newImage = Image.FromFile(Path.Combine(Directory.GetCurrentDirectory(), "Images", logoName)))
                     {
                         changingDrawing.Image = newImage;
                     }

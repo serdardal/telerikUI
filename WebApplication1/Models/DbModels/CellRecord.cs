@@ -27,5 +27,7 @@ namespace WebApplication1.Models
         public DateTime Date { get; set; }
 
         public string Type { get; set; }
+
+        public string Logo { get; set; }
     }
 }
