@@ -105,6 +105,13 @@ namespace WebApplication1.Controllers
 
             using (ExcelPackage excelPackage = GetSavedExcelPackageByName(fileName))
             {
+                // formun logosu var ise var olan logo ile değiştir
+                string logo = _excelService.GetLogoByName(fileName);
+                if (!string.IsNullOrEmpty(logo))
+                {
+                    ChangePicture(excelPackage.Workbook, logo);
+                }
+
                 fileByteArray = excelPackage.GetAsByteArray();
             }
 
