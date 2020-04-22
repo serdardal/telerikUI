@@ -289,6 +289,13 @@ namespace WebApplication1.Controllers
 
             using (ExcelPackage excelPackage = GetSavedExcelPackageWithShapesByName(fileName))
             {
+                // formun logosu var ise var olan logo ile değiştir
+                string logo = _excelService.GetLogoByName(fileName);
+                if (!string.IsNullOrEmpty(logo))
+                {
+                    ChangePicture(excelPackage.Workbook, logo);
+                }
+
                 //zemin rengi değiştirilecek hücrelerin işlenmesi
                 ColorCells(excelPackage.Workbook, coloredCellList);
 
