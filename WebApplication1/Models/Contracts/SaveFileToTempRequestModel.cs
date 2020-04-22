@@ -9,5 +9,6 @@ namespace WebApplication1.Models.Contracts
     {
         public string Base64 { get; set; }
         public string FileName { get; set; }
+        public string LogoName { get; set; }
     }
 }

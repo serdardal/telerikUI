@@ -70,8 +70,10 @@
             // Strip the data URL prologue.
             var base64 = dataURL.split(";base64,")[1];
 
+            var logoName = logo === "" ? null : logo;
+
             var url = "/SecondPage/SaveFileToTemp"
-            var data = { base64: base64, fileName: fileName };
+            var data = { base64: base64, fileName: fileName, logoName: logoName };
 
             // Post the base64 encoded content to the server which can save it.
             try {
@@ -136,6 +138,7 @@
     var currentTemplateName;
     var endMarks;
     var customFormattedCellTables;
+    var logo = "";
 
     kendo.culture("tr-TR");
 
@@ -199,11 +202,13 @@
 
     function handleSelectTemplate() {
         var selected = $('#templateNames option:selected').val()
-        var logoName = "";
+
         if ($("#bimarLogoCheckbox").is(":checked")) {
-            logoName="bimar.jpg"
+            logo = "bimar.jpg"
+        } else {
+            logo = "";
         }
-        openTemplate(selected, logoName);
+        openTemplate(selected, logo);
 
         currentTemplateName = selected;
 
@@ -406,6 +411,8 @@
     }
 
     function handleUpdateButton() {
+        logo = "";
+
         var res = checkCells();
         if (res) {
             spread.saveAsExcel();

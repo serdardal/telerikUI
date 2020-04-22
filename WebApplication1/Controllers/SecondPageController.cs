@@ -333,6 +333,7 @@ namespace WebApplication1.Controllers
         {
             string base64 = requestModel.Base64;
             string fileName = requestModel.FileName;
+            string logoName = requestModel.LogoName;
             //dosya kayıt edilirse veya update edilirse Temp klasörü altına kaydedilir.
 
             //Temp klasörü yok ise oluştur.
@@ -341,14 +342,14 @@ namespace WebApplication1.Controllers
             System.IO.File.WriteAllBytes(Directory.GetCurrentDirectory() + $"\\Temp\\{fileName}.xlsx", fileContents);
 
             //dosya kaydedildikten sonra üzerindeki veriler database ile senkronize edilir.
-            SyncDataWithDB(fileName);
+            SyncDataWithDB(fileName, logoName);
 
             IndexModel model = new IndexModel { OpenInNewTab = false };
 
             return View("Index", model);
         }
 
-        private void SyncDataWithDB(string fileName)
+        private void SyncDataWithDB(string fileName, string logoName)
         {
             //kayıt edilen dosyanın yeni bir dosya mı yoksa kayıtlı bir dosya mı olduğunun belirlenmesi
             var cells = _excelService.GetCellRecordsByDocName(fileName);
@@ -358,7 +359,7 @@ namespace WebApplication1.Controllers
             }
             else // kayıt yok yani ekleme işlemi
             {
-                AddNewRecordsToDB(fileName);
+                AddNewRecordsToDB(fileName, logoName);
             }
         }
 
@@ -455,7 +456,7 @@ namespace WebApplication1.Controllers
             _excelService.UpdateCells(newCellRecords, updatedCellRecords, deletedCellRecords);
         }
 
-        private void AddNewRecordsToDB(string fileName)
+        private void AddNewRecordsToDB(string fileName, string logoName)
         {
             string templateName = FindTemplateNameFromFileName(fileName);
             DateTime date = FindDateFromFileName(fileName);
@@ -504,7 +505,8 @@ namespace WebApplication1.Controllers
                                 TemplateName = templateName,
                                 FileName = fileName,
                                 Date = date,
-                                Type = type
+                                Type = type,
+                                Logo = logoName,
                             });
                         }
                     }
