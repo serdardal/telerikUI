@@ -1,0 +1,54 @@
+﻿
+@{
+    ViewData["Title"] = "Index";
+}
+
+<button onclick="handleClearAllRecords()">Clear All Records</button>
+<div id="grid"></div>
+
+<script>
+    $("#grid").kendoGrid({
+    })
+
+    var grid = $("#grid").data("kendoGrid");
+
+    $.ajax({
+        url: "/DbGrid/GetAllRecords/",
+        method: "get",
+        success: function (data) {
+            var newDatas = [];
+
+            for (var i = 0; i < data.length; i++) {
+                newDatas.push({
+                    Id: data[i].id,
+                    Sheet: data[i].tableIndex,
+                    Row: data[i].rowIndex,
+                    Column: data[i].columnIndex,
+                    Value: data[i].data,
+                    Template: data[i].templateName,
+                    FileName: data[i].fileName,
+                    Date: data[i].date,
+                    Type: data[i].type
+
+                })
+            }
+            var dataSource = new kendo.data.DataSource({
+                data: newDatas,
+                type: "json"
+            })
+
+            grid.setDataSource(dataSource);
+        }
+    })
+
+    function handleClearAllRecords() {
+        $.ajax({
+            url: "/DbGrid/ClearAllRecords/",
+            method: "get",
+            success: function () {
+                window.location.reload(false);
+            }
+        });
+    }
+</script>
+

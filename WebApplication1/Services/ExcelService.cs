@@ -98,5 +98,23 @@ namespace WebApplication1.Services
 
             return endmarks;
         }
+
+        public List<CellRecord> GetAllRecords()
+        {
+            var records = _dataContext.CellRecords.ToList();
+
+            return records;
+        }
+
+        public bool ClearAllRecords()
+        {
+            var records = _dataContext.CellRecords.ToList();
+
+            _dataContext.RemoveRange(records);
+
+            var deleted = _dataContext.SaveChanges();
+
+            return deleted > 0;
+        }
     }
 }
