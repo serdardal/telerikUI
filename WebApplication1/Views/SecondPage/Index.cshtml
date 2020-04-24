@@ -404,8 +404,9 @@
     }
 
     function handleSaveButton() {
-        var res = checkCells();
-        if (res) {
+        var cellRes = checkCells();
+        var inputRes = checkInputs();
+        if (cellRes && inputRes) {
             spread.saveAsExcel();
         }
     }
@@ -479,6 +480,22 @@
         }
 
         return valid;
+    }
+
+    function checkInputs() {
+        var fileName = $("#nameInput").val();
+        if (fileName === undefined || fileName === "") {
+            window.alert("Name cannot be empty!");
+            return false;
+        }
+
+        var date = $("#dateInput").val();
+        if (date === undefined || date === "") {
+            window.alert("Date cannot be empty!");
+            return false;
+        }
+
+        return true;
     }
 
     function onChange(arg) {
