@@ -38,7 +38,7 @@ namespace WebApplication1
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 
             services.AddDbContext<DataContext>(options =>
-            options.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=TelerikDB;Trusted_Connection=True;MultipleActiveResultSets=true;"));
+            options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
 
             services.AddScoped<IExcelService, ExcelService>();
         }
@@ -52,11 +52,13 @@ namespace WebApplication1
             }
             else
             {
-                app.UseExceptionHandler("/Home/Error");
                 app.UseHsts();
             }
 
-            app.UseHttpsRedirection();
+            app.UseDeveloperExceptionPage();
+            app.UseDatabaseErrorPage();
+
+            //app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseCookiePolicy();
 
