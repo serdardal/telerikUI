@@ -35,6 +35,7 @@
                 </div>
                 <button onclick="handleSaveButton()" style="margin-left: 10px" id="saveButton">Save</button>
                 <button onclick="handleUpdateButton()" style="margin-left: 10px" id="updateButton" hidden>Update</button>
+                <button onclick="handleApproveButton()" style="margin-left: 10px" id="approveButton">Approve</button>
                 <div id="spreadsheet" style="float:left; width:100%"></div>
             </div>
         </div>
@@ -167,10 +168,12 @@
             openSavedFileReadOnly("@Model.FileName");
             $('#updateButton').hide();
             $('#exportProtectedButton').show();
+            $('#approveButton').hide()
         } else {
             openSavedFileEditMode("@Model.FileName");
             $('#updateButton').show()
             $('#exportProtectedButton').hide();
+            $('#approveButton').show()
         }
 
         currentTemplateName = "";
@@ -219,6 +222,7 @@
 
         $('#saveButton').show()
         $('#updateButton').hide()
+        $('#approveButton').show()
         $('#exportProtectedButton').hide()
 
     }
@@ -230,10 +234,12 @@
             openSavedFileReadOnly(selected);
             $('#updateButton').hide();
             $('#exportProtectedButton').show();
+            $('#approveButton').hide()
         } else {
             openSavedFileEditMode(selected)
             $('#updateButton').show()
             $('#exportProtectedButton').hide();
+            $('#approveButton').show()
         }
 
         currentTemplateName = "";
@@ -244,6 +250,8 @@
         $('#dateInput').prop('disabled', true);
 
         $('#saveButton').hide()
+
+        logo = "";
     }
 
     function getData(ajaxUrl) { 
@@ -404,16 +412,17 @@
     }
 
     function handleSaveButton() {
-        var cellRes = checkCells();
         var inputRes = checkInputs();
-        if (cellRes && inputRes) {
+        if (inputRes) {
             spread.saveAsExcel();
         }
     }
 
     function handleUpdateButton() {
-        logo = "";
+        spread.saveAsExcel();
+    }
 
+    function handleApproveButton() {
         var res = checkCells();
         if (res) {
             spread.saveAsExcel();
