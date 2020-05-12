@@ -422,11 +422,10 @@ namespace WebApplication1.Controllers
                         
                     }
                     // değer değiştiyse update edilmiş
-                    else if (tempCell.Value.ToString() != cellRecord.Data)
+                    else if (tempCell.Text != cellRecord.Data)
                     {
-                        cellRecord.Data = tempCell.Value.ToString();
+                        cellRecord.Data = tempCell.Text;
                         updatedCellRecords.Add(cellRecord);
-
                     }
 
                     // kayıtlarda olanları listeden çıkarır,geriye yeni eklenme ihtimali olanlar kalır
@@ -441,7 +440,8 @@ namespace WebApplication1.Controllers
                     List<FilledCellModel> cellList = table.CellList;
                     foreach(FilledCellModel cell in cellList)
                     {
-                        var value = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value;
+                        var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex];
+                        var value = tempCell.Value;
                         if (value != null)
                         {
                             string type = null;
@@ -454,7 +454,7 @@ namespace WebApplication1.Controllers
                             {
                                 RowIndex = cell.RowIndex,
                                 ColumnIndex = cell.ColumnIndex,
-                                Data = value.ToString(),
+                                Data = tempCell.Text,
                                 TableIndex = table.TableIndex,
                                 TemplateName = templateName,
                                 FileName = fileName,
@@ -499,11 +499,11 @@ namespace WebApplication1.Controllers
 
                     foreach(FilledCellModel cell in cellList)
                     {
-                        var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value;
+                        var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex];
                         
                         if (tempCell != null)
                         {
-                            string value = tempCell.ToString();
+                            string value = tempCell.Text;
                             string type = null;
                             if(cell.Format != null)
                             {
@@ -535,11 +535,11 @@ namespace WebApplication1.Controllers
 
                     foreach (FilledCellModel cell in formulaCellList)
                     {
-                        var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value;
+                        var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex];
 
                         if (tempCell != null)
                         {
-                            string value = tempCell.ToString();
+                            string value = tempCell.Text;
                             string type = null;
                             if (cell.Format != null)
                             {
@@ -633,7 +633,7 @@ namespace WebApplication1.Controllers
                         }
                         else if (type == "time")
                         {
-                            range.Value = double.Parse(cell.Data);
+                            range.Value = DateTime.Parse(cell.Data);
                         }
                         else
                         {
