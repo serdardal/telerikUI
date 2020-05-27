@@ -423,6 +423,7 @@
     }
 
     function handleApproveButton() {
+        checkNotNullCells();
         var cellRes = checkCells();
         var inputRes = checkInputs();
         if (cellRes && inputRes) {
@@ -529,6 +530,34 @@
         
     }
 
+    function checkNotNullCells() {
+        function parseNotNullCell(cell) {
+            var valueWithoutParanthesis = cell.value.substring(1, cell.value.length - 1);
+            var condition = valueWithoutParanthesis.split(";")[1];
+            var sourceCell = valueWithoutParanthesis.split(";")[2];
+            return {
+                condition: condition,
+                sourceCell: sourceCell
+            };
+        }
+        
+        for (var i = 0; i < notNullCellTables.length; i++) {
+            var table = notNullCellTables[i];
+            var celllist = table.cellList;
+            for (var j = 0; j < celllist.length; j++) {
+                var cell = celllist[j];
+                var parsedValue = parseNotNullCell(cell);
+
+                var range = spread.sheets()[i].range(parsedValue.sourceCell);
+                range.forEachCell(function (row, column, c) {
+                    if (c.value !== parsedValue.condition) {
+                        spread.sheets()[i].range(cell.rowIndex-1, cell.columnIndex-1).validation(null);
+                    }
+                })
+            }
+        }
+    }
+
     function checkCustomFormattedCells(range, currentSheetIndex) {
         range.forEachCell(function (row, column, cell) {
             var currentCustomFormattedCellSheet = customFormattedCellTables[currentSheetIndex];
@@ -541,7 +570,7 @@
                     var conditions = currentCustomFormattedCell.format.split(";");
                     for (let i = 0; i < conditions.length; i++) {
                         var currentCondition = conditions[i];
-                        if (currentCondition.startsWith("[")) {
+                        if (currentCondition.startsWith("[") && !currentCondition.endsWith("█")) {
                             var response = isFullfillsTheCondition(cell.value, currentCondition);
                             //conditionun sağlanıyor olması istenmeyen bir durum o yüzden renklendir
                             if (response.fullfills) {
@@ -556,6 +585,8 @@
             }
         });
     }
+
+    
 
     function colorCell(sheetIndex, rowIndex, columnIndex, color) {
         var sheetList = spread.sheets();
