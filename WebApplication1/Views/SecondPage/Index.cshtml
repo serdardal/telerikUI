@@ -535,12 +535,12 @@
        for (var i = 0; i < notNullCellTables.length; i++) {
             var table = notNullCellTables[i];
             var celllist = table.cellList;
-            for (var j = 0; j < celllist.length; j++) {
-                var cell = celllist[j];
+           for (var j = 0; j < celllist.length; j++) {
+               var cell = celllist[j];
 
-                var range = spread.sheets()[i].range(cell.rowIndex - 1, cell.columnIndex - 1);
-                cell.oldValidation = range.validation();
-                range.validation(null);
+               var range = spread.sheets()[i].range(cell.rowIndex - 1, cell.columnIndex - 1);
+               cell.oldValidation = range.validation();
+               range.validation({...cell.oldValidation, allowNulls:true});
             }
         }
     }
@@ -568,7 +568,7 @@
                     if (c.value == parsedValue.condition) {
                         spread.sheets()[i].range(cell.rowIndex - 1, cell.columnIndex - 1).validation(cell.oldValidation);
                     } else {
-                        spread.sheets()[i].range(cell.rowIndex - 1, cell.columnIndex - 1).validation(null);
+                        spread.sheets()[i].range(cell.rowIndex - 1, cell.columnIndex - 1).validation({ ...cell.oldValidation, allowNulls:true });
                     }
                 })
             }
