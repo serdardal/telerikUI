@@ -414,6 +414,7 @@ namespace WebApplication1.Controllers
                 // güncellenmiş veya silinmiş kayıtların belirlenmesi.
                 foreach(CellRecord cellRecord in DBCellRecords)
                 {
+                    var cell = dataTables[cellRecord.TableIndex].CellList.FirstOrDefault(x => x.RowIndex == cellRecord.RowIndex && x.ColumnIndex == cellRecord.ColumnIndex);
                     ExcelWorksheet tempWorksheet = worksheetList[cellRecord.TableIndex];
                     var tempCell = tempWorksheet.Cells[cellRecord.RowIndex, cellRecord.ColumnIndex];
                     //yeni değer nullse silinmiş
@@ -423,14 +424,22 @@ namespace WebApplication1.Controllers
                         
                     }
                     // değer değiştiyse update edilmiş
-                    else if (tempCell.Text != cellRecord.Data)
+                    else if (tempCell.Text != cellRecord.Data || tempCell.Value.ToString() != cellRecord.Data)
                     {
-                        cellRecord.Data = tempCell.Text;
+                        string value = tempCell.Text;
+                        string type = null;
+                        if (cell.Format != null)
+                        {
+                            type = FindTypeOfCell(cell.Format);
+                        }
+                        if (type == "number") value = tempCell.Value.ToString();
+
+                        cellRecord.Data = value;
                         updatedCellRecords.Add(cellRecord);
                     }
 
                     // kayıtlarda olanları listeden çıkarır,geriye yeni eklenme ihtimali olanlar kalır
-                    dataTables[cellRecord.TableIndex].CellList.RemoveAll(x => x.RowIndex == cellRecord.RowIndex && x.ColumnIndex == cellRecord.ColumnIndex);
+                    dataTables[cellRecord.TableIndex].CellList.Remove(cell);
                 }
 
                 //yeni eklenmiş kayıtların belirlenmesi.
@@ -442,20 +451,21 @@ namespace WebApplication1.Controllers
                     foreach(FilledCellModel cell in cellList)
                     {
                         var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex];
-                        var value = tempCell.Value;
-                        if (value != null)
+                        if (tempCell.Value != null)
                         {
+                            string value = tempCell.Text;
                             string type = null;
                             if (cell.Format != null)
                             {
                                 type = FindTypeOfCell(cell.Format);
                             }
+                            if (type == "number") value = tempCell.Value.ToString();
 
                             newCellRecords.Add(new CellRecord
                             {
                                 RowIndex = cell.RowIndex,
                                 ColumnIndex = cell.ColumnIndex,
-                                Data = tempCell.Text,
+                                Data = value,
                                 TableIndex = table.TableIndex,
                                 TemplateName = templateName,
                                 FileName = fileName,
@@ -510,7 +520,7 @@ namespace WebApplication1.Controllers
                             {
                                 type = FindTypeOfCell(cell.Format);
                             }
-                            if (type == "number" && tempCell.Value != null) value = tempCell.Value.ToString();
+                            if (type == "number") value = tempCell.Value.ToString();
 
                             newCellRecords.Add(new CellRecord
                             {
@@ -547,7 +557,7 @@ namespace WebApplication1.Controllers
                             {
                                 type = FindTypeOfCell(cell.Format);
                             }
-                            if (type == "number" && tempCell.Value != null) value = tempCell.Value.ToString();
+                            if (type == "number") value = tempCell.Value.ToString();
 
                             newCellRecords.Add(new CellRecord
                             {
