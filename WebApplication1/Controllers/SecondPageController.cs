@@ -75,15 +75,11 @@ namespace WebApplication1.Controllers
 
                     foreach (FilledCellModel cell in cellList)
                     {
-                        var value = templateWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value;
-                        if (value != null) {
-                            string key = value.ToString();
-                            if (variableDictionary.ContainsKey(key))
-                            {
-                                templateWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = variableDictionary[key];
-                            }
+                        string key = templateWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value.ToString();
+                        if (variableDictionary.ContainsKey(key))
+                        {
+                            templateWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = variableDictionary[key];
                         }
-                        
                     }
                 }
 
@@ -172,7 +168,7 @@ namespace WebApplication1.Controllers
 
                     List<string> mergedCellList = currentWorksheet.MergedCells.ToList();
 
-                    //bir sheet için {E} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
+                    //bir sheet için {END} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
                     int countOfRowsToSearch = 300;
                     int countOfColumnsToSearch = 300;
 
@@ -203,18 +199,16 @@ namespace WebApplication1.Controllers
                             {
                                 var value = currentCell.Value;
                                 string format = currentCell.Style.Numberformat.Format;
-                                var newCell = new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format };
 
-                                //not null validationlu ve ship particular cellerin belirlenmesi
-                                if (value != null && value.ToString().StartsWith("{") && value.ToString().EndsWith("}"))
+                                //not null cellerin belirlenmesi
+                                if (value != null && value.ToString() == "{NN}")
                                 {
-                                    if (value.ToString().StartsWith("{NN;")) {
-                                        notNullCells[k].CellList.Add(newCell);
-                                    }
-                                    else
-                                    {
-                                        shipParticularCells[k].CellList.Add(newCell);
-                                    }
+                                    notNullCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
+                                }
+                                //ship particular cellerin belirlenmesi
+                                if (value != null && value.ToString() != "{NN}" && value.ToString().StartsWith("{") && value.ToString().EndsWith("}"))
+                                {
+                                    shipParticularCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
                                 }
                                 //excel hücreleri için format belirlenmez ise "General" olarak dönüyor
                                 //telerik spreadsheets ise null olarak istiyor.
@@ -223,13 +217,18 @@ namespace WebApplication1.Controllers
                                     format = null;
                                 }
                                 else if(format.StartsWith("[")) {
-                                    customFormattedCells[k].CellList.Add(newCell);
+                                    customFormattedCells[k].CellList.Add(new FilledCellModel { 
+                                        RowIndex = i, 
+                                        ColumnIndex = j, 
+                                        Value = value == null ? null : value.ToString(), 
+                                        Format = format 
+                                    });
                                 }
 
 
                                 if (!merged) //data celldir
                                 {
-                                    dataCells[k].CellList.Add(newCell);
+                                    dataCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
                                 }
                                 else
                                 {
@@ -241,7 +240,7 @@ namespace WebApplication1.Controllers
 
                                     if (masterCell.Start.Row == i && masterCell.Start.Column == j) //now we are in master cell so its data cell
                                     {
-                                        mergedDataCells[k].CellList.Add(newCell);
+                                        mergedDataCells[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format });
                                         mergedTables[k].MergedCellList.Add(mergeAdress);
                                     }
                                 }
@@ -251,16 +250,16 @@ namespace WebApplication1.Controllers
                     }
 
                     //kayıt dosyasıysa önce cellerin içi doldurulur.
-                    //if (!model.IsTemplate)
-                    //{
-                    //    List<CellRecord> savedCells = _excelService.GetCellRecordsByDocName(model.DocumentName);
+                    if (!model.IsTemplate)
+                    {
+                        List<CellRecord> savedCells = _excelService.GetCellRecordsByDocName(model.DocumentName);
 
-                    //    foreach (CellRecord cell in savedCells)
-                    //    {
-                    //        var sheet = worksheetList[cell.TableIndex];
-                    //        sheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
-                    //    }
-                    //}
+                        foreach (CellRecord cell in savedCells)
+                        {
+                            var sheet = worksheetList[cell.TableIndex];
+                            sheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
+                        }
+                    }
 
                 }
 
@@ -502,7 +501,7 @@ namespace WebApplication1.Controllers
                     {
                         var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex];
                         
-                        if (tempCell.Value != null)
+                        if (tempCell != null)
                         {
                             string value = tempCell.Text;
                             string type = null;
@@ -510,7 +509,6 @@ namespace WebApplication1.Controllers
                             {
                                 type = FindTypeOfCell(cell.Format);
                             }
-                            if (type == "number" && tempCell.Value != null) value = tempCell.Value.ToString();
 
                             newCellRecords.Add(new CellRecord
                             {
@@ -539,7 +537,7 @@ namespace WebApplication1.Controllers
                     {
                         var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex];
 
-                        if (tempCell.Value != null)
+                        if (tempCell != null)
                         {
                             string value = tempCell.Text;
                             string type = null;
@@ -547,7 +545,6 @@ namespace WebApplication1.Controllers
                             {
                                 type = FindTypeOfCell(cell.Format);
                             }
-                            if (type == "number" && tempCell.Value != null) value = tempCell.Value.ToString();
 
                             newCellRecords.Add(new CellRecord
                             {
@@ -777,7 +774,7 @@ namespace WebApplication1.Controllers
 
                     shipParticularCellTables.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
 
-                    //bir sheet için {E} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
+                    //bir sheet için {END} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
                     int countOfRowsToSearch = 300;
                     int countOfColumnsToSearch = 300;
 
@@ -806,7 +803,7 @@ namespace WebApplication1.Controllers
                             {
                                 var value = currentCell.Value;
 
-                                if (value != null && !value.ToString().StartsWith("{NN;") && value.ToString() != "{E}" && value.ToString().StartsWith("{") && value.ToString().EndsWith("}"))
+                                if (value != null && value.ToString() != "{NN}" && value.ToString() != "{END}" && value.ToString().StartsWith("{") && value.ToString().EndsWith("}"))
                                 {
                                     shipParticularCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value.ToString()});
                                 }
@@ -843,7 +840,7 @@ namespace WebApplication1.Controllers
 
                     customFormattedCellTables.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
 
-                    //bir sheet için {E} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
+                    //bir sheet için {END} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
                     int countOfRowsToSearch = 300;
                     int countOfColumnsToSearch = 300;
 
@@ -912,7 +909,7 @@ namespace WebApplication1.Controllers
                     dataCellTables.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
                     formulaCellTables.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
 
-                    //bir sheet için {E} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
+                    //bir sheet için {END} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
                     int countOfRowsToSearch = 300;
                     int countOfColumnsToSearch = 300;
 
@@ -1039,7 +1036,7 @@ namespace WebApplication1.Controllers
                             var currentCell = currentWorksheet.Cells[i, j];
                             var value = currentCell.Value;
 
-                            if(value != null && value.ToString() == "{E}")
+                            if(value != null && value.ToString() == "{END}")
                             {
                                 endMarks.Add(new EndMark { TemplateName = templateName, SheetIndex = k, RowIndex = i, ColumnIndex = j }); ;                                found = true;
 
@@ -1059,36 +1056,14 @@ namespace WebApplication1.Controllers
         {
             List<EndMark> endMarks = _excelService.GetEndMarksofTemplate(templateName);
 
-            ExcelWorksheets worksheetList = workBook.Worksheets;
+            ExcelWorksheets excelWorksheets = workBook.Worksheets;
 
             foreach(EndMark endMark in endMarks)
             {
-                ExcelWorksheet worksheet = worksheetList[endMark.SheetIndex];
+                ExcelWorksheet worksheet = excelWorksheets[endMark.SheetIndex];
 
                 worksheet.Cells[endMark.RowIndex, endMark.ColumnIndex].Value = null;
             }
-
-
-            for (int k = 0; k < worksheetList.Count; k++) //sheet index
-            {
-                var currentWorksheet = worksheetList[k];
-
-                for (int j = 1; j < 300; j++)// column index
-                {
-
-                    for (int i = 1; i < 300; i++)//row index
-                    {
-                        var currentCell = currentWorksheet.Cells[i, j];
-                        var value = currentCell.Value;
-
-                        if (value != null && value.ToString().StartsWith("{NN;"))
-                        {
-                            currentCell.Value = null;
-                        }
-                    }
-                }
-            }
-
         }
 
         private void ColorCells(ExcelWorkbook workBook, List<ColoredCellModel> coloredCells)
