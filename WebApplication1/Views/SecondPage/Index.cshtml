@@ -140,6 +140,7 @@
     var endMarks;
     var customFormattedCellTables;
     var logo = "";
+    var validationSourceCells=[];
 
     kendo.culture("tr-TR");
 
@@ -392,7 +393,7 @@
                 notNullCellTables = datas.notNullCellTables;
                 endMarks = datas.endMarks;
                 customFormattedCellTables = datas.customFormattedCellTables;
-                findNotNullCellValidations();
+                findNotNullCellSources();
             }
         })
 
@@ -424,7 +425,7 @@
     }
 
     function handleApproveButton() {
-        checkNotNullCells();
+        //checkNotNullCells();
         var cellRes = checkCells();
         var inputRes = checkInputs();
         if (cellRes && inputRes) {
@@ -527,25 +528,12 @@
 
         if (currentSheetIndex >= 0) {
             checkCustomFormattedCells(range, currentSheetIndex);
+            checkNotNullCells(range, currentSheetIndex);
         }
         
     }
 
-    function findNotNullCellValidations() {
-       for (var i = 0; i < notNullCellTables.length; i++) {
-            var table = notNullCellTables[i];
-            var celllist = table.cellList;
-           for (var j = 0; j < celllist.length; j++) {
-               var cell = celllist[j];
-
-               var range = spread.sheets()[i].range(cell.rowIndex - 1, cell.columnIndex - 1);
-               cell.oldValidation = range.validation();
-               range.validation({...cell.oldValidation, allowNulls:true});
-            }
-        }
-    }
-
-    function checkNotNullCells() {
+    function findNotNullCellSources() {
         function parseNotNullCell(cell) {
             var valueWithoutParanthesis = cell.value.substring(1, cell.value.length - 1);
             var condition = valueWithoutParanthesis.split(";")[1];
@@ -555,24 +543,68 @@
                 sourceCell: sourceCell
             };
         }
-        
+
         for (var i = 0; i < notNullCellTables.length; i++) {
             var table = notNullCellTables[i];
             var celllist = table.cellList;
             for (var j = 0; j < celllist.length; j++) {
                 var cell = celllist[j];
-                var parsedValue = parseNotNullCell(cell);
 
-                var range = spread.sheets()[i].range(parsedValue.sourceCell);
-                range.forEachCell(function (row, column, c) {
-                    if (c.value == parsedValue.condition) {
-                        spread.sheets()[i].range(cell.rowIndex - 1, cell.columnIndex - 1).validation(cell.oldValidation);
-                    } else {
-                        spread.sheets()[i].range(cell.rowIndex - 1, cell.columnIndex - 1).validation({ ...cell.oldValidation, allowNulls:true });
-                    }
+                //kosullu validasyon olan hücrelerin source hücrelerinin bulunması ve kaydedilmesi
+                var parsedCell = parseNotNullCell(cell);
+                var parsedCondition = parsedCell.condition;
+                var parsedSourceCell = parsedCell.sourceCell;
+                var sourceCellRange = spread.sheets()[i].range(parsedSourceCell);
+                sourceCellRange.forEachCell((row, column, cellProperties) => {
+                    validationSourceCells.push({
+                        sheetIndex: i,
+                        rowIndex: row,
+                        columnIndex: column,
+                        condition: parsedCondition,
+                        destinationCell: {
+                            rowIndex: cell.rowIndex - 1,
+                            columnIndex: cell.columnIndex - 1,
+                            validation: spread.sheets()[i].range(cell.rowIndex - 1, cell.columnIndex - 1).validation(),
+                            backgroundColor :spread.sheets()[i].range(cell.rowIndex - 1, cell.columnIndex - 1).background(),
+                        }
+                    })
                 })
+
             }
         }
+
+        for (var j = 0; j < validationSourceCells.length; j++) {
+            var sourceCell = validationSourceCells[j];
+            var range = spread.sheets()[sourceCell.sheetIndex].range(sourceCell.rowIndex, sourceCell.columnIndex)
+            checkNotNullCells(range, sourceCell.sheetIndex);
+        }
+    }
+
+    function checkNotNullCells(range, currentSheetIndex) {
+        range.forEachCell(function (row, column, cell) {
+            var sourceCells = validationSourceCells.filter(x => {
+                return x.sheetIndex === currentSheetIndex &&
+                    x.rowIndex === row &&
+                    x.columnIndex === column
+            })
+
+            if (sourceCells.length > 0) {
+                var sourceCell = sourceCells[0];
+                var sourceCellValue = spread.sheets()[currentSheetIndex].range(sourceCell.rowIndex, sourceCell.columnIndex).value();
+                var destinationCell = sourceCell.destinationCell;
+                var destinationRange = spread.sheets()[currentSheetIndex].range(destinationCell.rowIndex, destinationCell.columnIndex);
+                if (sourceCellValue === sourceCell.condition) {
+                    destinationRange.validation(destinationCell.validation);
+                    destinationRange.background(destinationCell.backgroundColor);
+                    destinationRange.enable(true);
+                } else {
+                    destinationRange.validation({ ...destinationCell.validation, allowNulls: true });
+                    destinationRange.value(null);
+                    destinationRange.background("grey");
+                    destinationRange.enable(false);
+                }
+            }
+        })
     }
 
     function checkCustomFormattedCells(range, currentSheetIndex) {
