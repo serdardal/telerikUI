@@ -42,6 +42,7 @@ namespace WebApplication1
 
             services.AddDbContext<DataContext>(options =>
             options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+            //options.UseSqlServer(Configuration.GetConnectionString("IISTestConnection")));
 
             services.AddScoped<IExcelService, ExcelService>();
         }
