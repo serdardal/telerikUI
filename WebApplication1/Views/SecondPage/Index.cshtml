@@ -45,7 +45,7 @@
     $("#spreadsheet").kendoSpreadsheet({
         render: function (e) {
             var height = window.innerHeight;
-            e.sender.element.innerHeight(height-100);
+            e.sender.element.innerHeight(height - 100);
         },
         excelExport: async function (e) {
             var fileName = $("#nameInput").val();
@@ -132,6 +132,16 @@
             }
         },
         change: onChange,
+        selectSheet: function (arg) {
+            console.log(arg.sheet.name() + " sheet is selected");
+            var index = 0;
+            spread.sheets().forEach((sheet, idx) => {
+                if (sheet.name() === arg.sheet.name()) {
+                    index = idx;
+                }
+            })
+            bindChangeFunctionToSheet(index);
+        }
     });
     var spread = $('#spreadsheet').getKendoSpreadsheet();
     var dataCellTables;
@@ -140,7 +150,7 @@
     var endMarks;
     var customFormattedCellTables;
     var logo = "";
-    var validationSourceCells=[];
+    var validationSourceCells = [];
 
     kendo.culture("tr-TR");
 
@@ -279,6 +289,8 @@
             await spread.fromFile(b64toBlob(response));
             lockAllCells();
             await unlockCells(name, true);
+
+            bindChangeFunctionToSheet(0);
         }
         catch (err) {
             console.log(err);
@@ -296,6 +308,7 @@
             var customCellsResponse = await getData(customCellsUrl);
             customFormattedCellTables = customCellsResponse;
             colorCustomFormattedCells();
+            bindChangeFunctionToSheet(0);
         }
         catch (err)
         {
@@ -312,6 +325,7 @@
             lockAllCells();
             await unlockCells(name, false);
             colorCustomFormattedCells();
+            bindChangeFunctionToSheet(0);
         }
         catch (err)
         {
@@ -743,6 +757,17 @@
             var url = '/SecondPage/OpenFileReadonlyInNewTab/' + selected + '/' + readonly;
             window.open(url, '_blank');
         }
+    }
+
+    function bindChangeFunctionToSheet(index) {
+        var sheet = spread.sheets()[index];
+
+        sheet.bind("change", function (e) {
+            if (e.sender._sheet._activeDrawing !== null || e.sender._sheet._draggingInProgress !== null) {
+                e.sender._sheet._activeDrawing = null;
+                e.sender._sheet._draggingInProgress = null;
+            }
+        });
     }
 
 </script>
