@@ -55,7 +55,11 @@ namespace WebApplication1.Services
         public string GetTemplateName(string fileName)
         {
             CellRecord record = _dataContext.CellRecords.FirstOrDefault(x => x.FileName == fileName);
-            return record.TemplateName;
+            if(record != null)
+            {
+                return record.TemplateName;
+            }
+            return null;
         }
 
         public bool UpdateCells(List<CellRecord> addedCellRecords, List<CellRecord> changedCellRecords, List<CellRecord> deletedCellRecords)

@@ -144,7 +144,6 @@
         }
     });
     var spread = $('#spreadsheet').getKendoSpreadsheet();
-    var dataCellTables;
     var notNullCellTables;
     var currentTemplateName;
     var endMarks;
@@ -285,11 +284,21 @@
         var url = '/SecondPage/GetTemplateByName/';
         var data = { templateName: name, logoName: logoName };
         try {
-            var response = await postData(url,data);
-            await spread.fromFile(b64toBlob(response));
+            var response = await postData(url, data);
+            await spread.fromFile(b64toBlob(response.base64File));
             lockAllCells();
-            await unlockCells(name, true);
 
+            var notMergedDataCellTables = response.notMergedDataCellTables;
+            var mergedRangesTables = response.mergedRangesTables;
+            var shipParticularCellTables = response.shipParticularCellTables;
+
+            unlockCells(notMergedDataCellTables, mergedRangesTables, shipParticularCellTables);
+
+            notNullCellTables = response.notNullCellTables;
+            endMarks = response.endMarks;
+            customFormattedCellTables = response.customFormattedCellTables;
+
+            findNotNullCellSources();
             bindChangeFunctionToSheet(0);
         }
         catch (err) {
@@ -299,14 +308,12 @@
 
     async function openSavedFileReadOnly(name) {
         var url = '/SecondPage/GetSavedFileByName/' + name;
-        var customCellsUrl = '/SecondPage/GetCustomFormattedCellsByName/' + name;
 
         try {
             var response = await getData(url);
-            await spread.fromFile(b64toBlob(response));
+            await spread.fromFile(b64toBlob(response.base64File));
             lockAllCells();
-            var customCellsResponse = await getData(customCellsUrl);
-            customFormattedCellTables = customCellsResponse;
+            customFormattedCellTables = response.customFormattedCellTables;
             colorCustomFormattedCells();
             bindChangeFunctionToSheet(0);
         }
@@ -321,9 +328,20 @@
 
         try {
             var response = await getData(url);
-            await spread.fromFile(b64toBlob(response));
+            await spread.fromFile(b64toBlob(response.base64File));
             lockAllCells();
-            await unlockCells(name, false);
+
+            var notMergedDataCellTables = response.notMergedDataCellTables;
+            var mergedRangesTables = response.mergedRangesTables;
+            var shipParticularCellTables = response.shipParticularCellTables;
+
+            unlockCells(notMergedDataCellTables, mergedRangesTables, shipParticularCellTables);
+
+            notNullCellTables = response.notNullCellTables;
+            endMarks = response.endMarks;
+            customFormattedCellTables = response.customFormattedCellTables;
+
+            findNotNullCellSources();
             colorCustomFormattedCells();
             bindChangeFunctionToSheet(0);
         }
@@ -356,60 +374,37 @@
 
     }
 
-    async function unlockCells(docName, isTemplate) {
-        var data = { documentName: docName, isTemplate: isTemplate };
+    function unlockCells(notMergedDataCellTables, mergedRangesTables, shipParticularCellTables) {
+        var sheetList = spread.sheets();
 
-        await $.ajax({
-            url: '/SecondPage/GetUnlockedCells/',
-            method: "post",
-            contentType: "application/json",
-            data: JSON.stringify(data),
-            success: function (datas) {
-                var sheetList = spread.sheets();
+        //merge olmayan data hücrelerin enable edilmesi
+        for (var k = 0; k < sheetList.length; k++) {
+            var cellList = notMergedDataCellTables[k].cellList;
+            var sheet = sheetList[k];
 
-                //merge olmayan data hücrelerin enable edilmesi
-                for (var k = 0; k < sheetList.length; k++) {
-                    var cellList = datas.notMergedDataCellTables[k].cellList;
-                    var sheet = sheetList[k];
-
-                    for (var i = 0; i < cellList.length; i++) {
-                        //Telerik Spreadsheets hücre indexleri 0 dan başlıyor fakat EPPlus'ta 1 den başlıyor
-                        //bu nedenle 1 çıkarıyoruz.
-                        var range = sheet.range(cellList[i].rowIndex-1, cellList[i].columnIndex-1)
-                        range.enable(true);
-                    }
-                }
-
-                //merge edilmiş data hücrelerin enable edilmesi
-                //sadece veri yazılacak hücreyi (sol üst hücre) enable etmek yeterli olmuyor.
-                //merge edilmiş tüm hücrelerin enable edilmesi gerekiyor.
-                var mergedTables = datas.mergedRangesTables;
-
-                for (var k = 0; k < sheetList.length; k++) {
-                    var mergedAddressList = mergedTables[k].mergedCellList;
-                    var sheet = sheetList[k];
-
-                    for (var i = 0; i < mergedAddressList.length; i++) {
-                        var range = sheet.range(mergedAddressList[i])
-                        range.enable(true);
-                    }
-                }
-
-                //ship particular hücrelerin disable edilmesi
-                var shipParticularCells = datas.shipParticularCellTables;
-                lockShipParticularCells(shipParticularCells);
-
-                //değişkenlerin atanması
-                dataCellTables = datas.notMergedDataCellTables;
-                for (var i = 0; i < dataCellTables.length; i++) {
-                    dataCellTables[i].cellList = dataCellTables[i].cellList.concat(datas.mergedDataCellTables[i].cellList);
-                }
-                notNullCellTables = datas.notNullCellTables;
-                endMarks = datas.endMarks;
-                customFormattedCellTables = datas.customFormattedCellTables;
-                findNotNullCellSources();
+            for (var i = 0; i < cellList.length; i++) {
+                //Telerik Spreadsheets hücre indexleri 0 dan başlıyor fakat EPPlus'ta 1 den başlıyor
+                //bu nedenle 1 çıkarıyoruz.
+                var range = sheet.range(cellList[i].rowIndex-1, cellList[i].columnIndex-1)
+                range.enable(true);
             }
-        })
+        }
+
+        //merge edilmiş data hücrelerin enable edilmesi
+        //sadece veri yazılacak hücreyi (sol üst hücre) enable etmek yeterli olmuyor.
+        //merge edilmiş tüm hücrelerin enable edilmesi gerekiyor.
+        for (var k = 0; k < sheetList.length; k++) {
+            var mergedAddressList = mergedRangesTables[k].mergedCellList;
+            var sheet = sheetList[k];
+
+            for (var i = 0; i < mergedAddressList.length; i++) {
+                var range = sheet.range(mergedAddressList[i])
+                range.enable(true);
+            }
+        }
+
+        //ship particular hücrelerin disable edilmesi
+        lockShipParticularCells(shipParticularCellTables);
 
     }
 

@@ -6,10 +6,8 @@ using System.Threading.Tasks;
 
 namespace WebApplication1.Models
 {
-    public class DataAndFormulaCellsModel
+    public class CellModelWithFormat : CellModel
     {
-        public List<TableModel> DataCellTables { get; set; }
-
-        public List<TableModel> FormulaCellTables { get; set; }
+        public string Format { get; set; }
     }
 }

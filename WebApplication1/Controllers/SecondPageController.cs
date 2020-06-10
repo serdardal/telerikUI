@@ -41,7 +41,7 @@ namespace WebApplication1.Controllers
         }
 
         [HttpPost]
-        public string GetTemplateByName([FromBody] OpenTemplateRequestModel requestModel)
+        public GetTemplateResponse GetTemplateByName([FromBody] OpenTemplateRequestModel requestModel)
         {
             string templateName = requestModel.TemplateName;
             //ship particular değişkenlerin bulunduğu dictionary
@@ -54,12 +54,17 @@ namespace WebApplication1.Controllers
                 variableDictionary.Add(item.Key, item.Value);
             }
 
-            List<TableModel> shipParticularCellTables = FindShipParticularCells(templateName);
 
             byte[] fileByteArray = { };
+            CellGroupModel _cellGroupModel;
             //gönderilmeden önce ship particular değişkenlerin doldurulması
             using (ExcelPackage excelPackage = GetExcelPackageByTeplateName(templateName))
             {
+                CellGroupModel cellGroups = FindCellGroups(excelPackage, templateName);
+                _cellGroupModel = cellGroups;
+
+                List<TableModel> shipParticularCellTables = cellGroups.ShipParticularCellTables;
+
                 ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
 
                 if (!string.IsNullOrEmpty(requestModel.LogoName))
@@ -71,9 +76,9 @@ namespace WebApplication1.Controllers
                 {
                     ExcelWorksheet templateWorksheet = worksheetList[i];
                     TableModel table = shipParticularCellTables[i];
-                    List<FilledCellModel> cellList = table.CellList;
+                    List<CellModel> cellList = table.CellList;
 
-                    foreach (FilledCellModel cell in cellList)
+                    foreach (CellModel cell in cellList)
                     {
                         var value = templateWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value;
                         if (value != null) {
@@ -87,11 +92,23 @@ namespace WebApplication1.Controllers
                     }
                 }
 
+                RemoveExcelShapesFromExcelPackage(excelPackage);
+                RemoveEndMarksFrowWorkBook(excelPackage.Workbook, templateName);
                 fileByteArray = excelPackage.GetAsByteArray();
             }
 
             string file = Convert.ToBase64String(fileByteArray);
-            return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
+            string base64File = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
+
+            return new GetTemplateResponse {
+                Base64File = base64File,
+                NotMergedDataCellTables = _cellGroupModel.NotMergedDataCellTables,
+                NotNullCellTables = _cellGroupModel.NotNullCellTables,
+                ShipParticularCellTables = _cellGroupModel.ShipParticularCellTables,
+                MergedRangesTables = _cellGroupModel.MergedRangesTables,
+                EndMarks = _cellGroupModel.EndMarks,
+                CustomFormattedCellTables = _cellGroupModel.CustomFormattedCellTables
+            };
         }
 
         [HttpGet]
@@ -103,12 +120,18 @@ namespace WebApplication1.Controllers
         }
 
         [HttpGet("SecondPage/GetSavedFileByName/{fileName}")]
-        public string GetSavedFileByName(string fileName)
+        public GetSavedFilesResponse GetSavedFileByName(string fileName)
         {
             byte[] fileByteArray = { };
+            CellGroupModel _cellGroupModel;
+
+            var templateName = FindTemplateNameFromFileName(fileName);
 
             using (ExcelPackage excelPackage = GetSavedExcelPackageByName(fileName))
             {
+                CellGroupModel cellGroups = FindCellGroups(excelPackage, templateName);
+                _cellGroupModel = cellGroups;
+
                 // formun logosu var ise var olan logo ile değiştir
                 string logo = _excelService.GetLogoByName(fileName);
                 if (!string.IsNullOrEmpty(logo))
@@ -116,167 +139,25 @@ namespace WebApplication1.Controllers
                     ChangePicture(excelPackage.Workbook, logo);
                 }
 
+                RemoveExcelShapesFromExcelPackage(excelPackage);
+                RemoveEndMarksFrowWorkBook(excelPackage.Workbook, templateName);
+
                 fileByteArray = excelPackage.GetAsByteArray();
             }
 
             string file = Convert.ToBase64String(fileByteArray);
-            return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
-        }
+            string base64File = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
 
-        [HttpPost]
-        public IActionResult GetUnlockedCells([FromBody] CellUnlockRequestModel model)
-        {
-            string templateName = "";
-            if (model.IsTemplate)
+            return new GetSavedFilesResponse
             {
-                templateName = model.DocumentName;
-            }
-            else
-            {
-                templateName = _excelService.GetTemplateName(model.DocumentName);
-            }
-
-            string path = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
-            List<TableModel> dataCells = new List<TableModel>();
-            List<TableModel> notNullCells = new List<TableModel>();
-            List<TableModel> shipParticularCells = new List<TableModel>();
-            List<MergeTableModel> mergedTables = new List<MergeTableModel>();
-            List<TableModel> mergedDataCells = new List<TableModel>();
-            List<EndMark> endMarks = new List<EndMark>();
-            List<TableModel> customFormattedCells = new List<TableModel>();
-
-            FileInfo fi = new FileInfo(path);
-            using (ExcelPackage excelPackage = new ExcelPackage(fi))
-            {
-                ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
-
-                //endmarkların bulunması
-                var endMarkRecords = _excelService.GetEndMarksofTemplate(templateName);
-                if(endMarkRecords.Count == 0)
-                {
-                    endMarkRecords = FindEndMarksInTemplate(templateName);
-                }
-                endMarks = endMarkRecords;
-
-                //sheetlerin gezilmesi
-                for (int k = 0; k < worksheetList.Count; k++)
-                {
-                    var currentWorksheet = worksheetList[k];
-
-                    dataCells.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
-                    notNullCells.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
-                    shipParticularCells.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
-                    mergedTables.Add(new MergeTableModel { TableIndex = k, MergedCellList = new List<string>() });
-                    mergedDataCells.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
-                    customFormattedCells.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
-
-                    List<string> mergedCellList = currentWorksheet.MergedCells.ToList();
-
-                    //bir sheet için {E} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
-                    int countOfRowsToSearch = 300;
-                    int countOfColumnsToSearch = 300;
-
-                    //aranacak sınırın belirlenmesi
-                    if(endMarkRecords.Count > 0)
-                    {
-                        foreach(EndMark endMark in endMarkRecords)
-                        {
-                            if(endMark.SheetIndex == k)
-                            {
-                                countOfRowsToSearch = endMark.RowIndex;
-                                countOfColumnsToSearch = endMark.ColumnIndex;
-                            }
-                        }
-                    }
-
-                    //kilitli olmayan ve merge edilmemiş hücreleri bulur ve listeye ekler
-                    for (int i = 1; i < countOfRowsToSearch; i++) //satır
-                    {
-                        for (int j = 1; j < countOfColumnsToSearch; j++) //sütun
-                        {
-                            var currentCell = currentWorksheet.Cells[i, j];
-                            bool locked = currentCell.Style.Locked;
-                            bool merged = currentCell.Merge;
-
-
-                            if (!locked)
-                            {
-                                var value = currentCell.Value;
-                                string format = currentCell.Style.Numberformat.Format;
-                                var newCell = new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format };
-
-                                //not null validationlu ve ship particular cellerin belirlenmesi
-                                if (value != null && value.ToString().StartsWith("{") && value.ToString().EndsWith("}"))
-                                {
-                                    if (value.ToString().StartsWith("{NN;")) {
-                                        notNullCells[k].CellList.Add(newCell);
-                                    }
-                                    else
-                                    {
-                                        shipParticularCells[k].CellList.Add(newCell);
-                                    }
-                                }
-                                //excel hücreleri için format belirlenmez ise "General" olarak dönüyor
-                                //telerik spreadsheets ise null olarak istiyor.
-                                if (format == "General")
-                                {
-                                    format = null;
-                                }
-                                else if(format.StartsWith("[")) {
-                                    customFormattedCells[k].CellList.Add(newCell);
-                                }
-
-
-                                if (!merged) //data celldir
-                                {
-                                    dataCells[k].CellList.Add(newCell);
-                                }
-                                else
-                                {
-                                    //merge hücrelerden sol üstte olan data celldir.
-                                    var mergeAdress = currentWorksheet.MergedCells[i, j];
-
-                                    string masterCellName = mergeAdress.Split(":")[0];
-                                    var masterCell = currentWorksheet.Cells[masterCellName];
-
-                                    if (masterCell.Start.Row == i && masterCell.Start.Column == j) //now we are in master cell so its data cell
-                                    {
-                                        mergedDataCells[k].CellList.Add(newCell);
-                                        mergedTables[k].MergedCellList.Add(mergeAdress);
-                                    }
-                                }
-
-                            }
-                        }
-                    }
-
-                    //kayıt dosyasıysa önce cellerin içi doldurulur.
-                    //if (!model.IsTemplate)
-                    //{
-                    //    List<CellRecord> savedCells = _excelService.GetCellRecordsByDocName(model.DocumentName);
-
-                    //    foreach (CellRecord cell in savedCells)
-                    //    {
-                    //        var sheet = worksheetList[cell.TableIndex];
-                    //        sheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = cell.Data;
-                    //    }
-                    //}
-
-                }
-
-            }
-
-            UnlockResponseModel response = new UnlockResponseModel
-            {
-                NotMergedDataCellTables = dataCells,
-                MergedDataCellTables = mergedDataCells,
-                NotNullCellTables = notNullCells,
-                ShipParticularCellTables = shipParticularCells,
-                MergedRangesTables = mergedTables,
-                EndMarks = endMarks,
-                CustomFormattedCellTables = customFormattedCells,
+                Base64File = base64File,
+                NotMergedDataCellTables = _cellGroupModel.NotMergedDataCellTables,
+                NotNullCellTables = _cellGroupModel.NotNullCellTables,
+                ShipParticularCellTables = _cellGroupModel.ShipParticularCellTables,
+                MergedRangesTables = _cellGroupModel.MergedRangesTables,
+                EndMarks = _cellGroupModel.EndMarks,
+                CustomFormattedCellTables = _cellGroupModel.CustomFormattedCellTables
             };
-            return Ok(response);
         }
 
         [HttpPost]
@@ -329,14 +210,6 @@ namespace WebApplication1.Controllers
             return "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
         }
 
-        [HttpGet("SecondPage/GetCustomFormattedCellsByName/{fileName}")]
-        public IActionResult GetCustomFormattedCellsByName(string fileName)
-        {
-            string templateName = _excelService.GetTemplateName(fileName);
-            List<TableModel> customFormattedCellTables = FindCustomFormattedCells(templateName);
-            return Ok(customFormattedCellTables);
-        }
-
         [HttpGet("SecondPage/OpenFileReadonlyInNewTab/{fileName}/{readOnly}")]
         public IActionResult OpenFileReadonlyInNewTab(string fileName, bool readOnly) {
             IndexModel model = new IndexModel { OpenInNewTab = true, FileName = fileName, ReadOnly = readOnly };
@@ -364,6 +237,197 @@ namespace WebApplication1.Controllers
             return View("Index", model);
         }
 
+        private CellGroupModel FindCellGroups(ExcelPackage excelPackage, string templateName)
+        {
+            ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
+
+            List<TableModel> dataCells = new List<TableModel>();
+            List<TableModel> notMergedDataCells = new List<TableModel>();
+            List<MergeTableModel> mergedTables = new List<MergeTableModel>();
+            List<NotNullTableModel> notNullCells = new List<NotNullTableModel>();
+            List<TableModel> shipParticularCells = new List<TableModel>();
+            List<CustomFormattedTableModel> customFormattedCells = new List<CustomFormattedTableModel>();
+            List<TableModel> formulaCellTables = new List<TableModel>();
+
+            List<EndMark> endMarks = new List<EndMark>();
+            //endmarkların bulunması
+            var endMarkRecords = _excelService.GetEndMarksofTemplate(templateName);
+            if (endMarkRecords.Count == 0)
+            {
+                endMarkRecords = FindEndMarksInTemplate(templateName);
+            }
+            endMarks = endMarkRecords;
+
+            //sheetlerin gezilmesi
+            for (int k = 0; k < worksheetList.Count; k++)
+            {
+                var currentWorksheet = worksheetList[k];
+
+                dataCells.Add(new TableModel { TableIndex = k, CellList = new List<CellModel>() });
+                notMergedDataCells.Add(new TableModel { TableIndex = k, CellList = new List<CellModel>() });
+                mergedTables.Add(new MergeTableModel { TableIndex = k, MergedCellList = new List<string>() });
+                notNullCells.Add(new NotNullTableModel { TableIndex = k, CellList = new List<CellModelWithValue>() });
+                shipParticularCells.Add(new TableModel { TableIndex = k, CellList = new List<CellModel>() });
+                customFormattedCells.Add(new CustomFormattedTableModel { TableIndex = k, CellList = new List<CellModelWithFormat>() });
+                formulaCellTables.Add(new TableModel { TableIndex = k, CellList = new List<CellModel>() });
+
+                List<string> mergedCellList = currentWorksheet.MergedCells.ToList();
+
+                //bir sheet için {E} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
+                int countOfRowsToSearch = 300;
+                int countOfColumnsToSearch = 300;
+
+                //aranacak sınırın belirlenmesi
+                if (endMarkRecords.Count > 0)
+                {
+                    foreach (EndMark endMark in endMarkRecords)
+                    {
+                        if (endMark.SheetIndex == k)
+                        {
+                            countOfRowsToSearch = endMark.RowIndex;
+                            countOfColumnsToSearch = endMark.ColumnIndex;
+                        }
+                    }
+                }
+
+                //kilitli olmayan ve merge edilmemiş hücreleri bulur ve listeye ekler
+                for (int i = 1; i < countOfRowsToSearch; i++) //satır
+                {
+                    for (int j = 1; j < countOfColumnsToSearch; j++) //sütun
+                    {
+                        var currentCell = currentWorksheet.Cells[i, j];
+                        bool locked = currentCell.Style.Locked;
+                        bool merged = currentCell.Merge;
+
+
+                        if (!locked)
+                        {
+                            var value = currentCell.Value;
+                            string format = currentCell.Style.Numberformat.Format;
+                            var newCell = new CellModel { RowIndex = i, ColumnIndex = j};
+
+                            if (!merged)
+                            {
+                                notMergedDataCells[k].CellList.Add(newCell);
+                                dataCells[k].CellList.Add(newCell);
+                            }
+                            else
+                            {
+                                if(isMergedDataCell(currentWorksheet, i, j))
+                                {
+                                    //verinin tutulduğu hücre olduğu için dataCells e eklenir.
+                                    dataCells[k].CellList.Add(newCell);
+
+                                    //range olarak açılması gereken adres
+                                    var mergeAdress = currentWorksheet.MergedCells[i, j];
+                                    mergedTables[k].MergedCellList.Add(mergeAdress);
+                                }
+                            }
+
+                            if (isNotNullCell(currentCell))
+                            {
+                                var newNotNullCell = new CellModelWithValue { RowIndex = i, ColumnIndex = j, Value= value == null? null : value.ToString() };
+                                notNullCells[k].CellList.Add(newNotNullCell);
+                            }
+
+                            if (isShipParticularCell(currentCell)) shipParticularCells[k].CellList.Add(newCell);
+
+                            if (isCustomFormattedCell(currentCell))
+                            {
+                                var newCustomFormattedCell = new CellModelWithFormat { RowIndex = i, ColumnIndex = j, Format = format };
+                                customFormattedCells[k].CellList.Add(newCustomFormattedCell);
+                            }
+
+                        }
+                        else // formül hücreleri locked durumdadır.
+                        {
+                            if (isFormulaCell(currentCell)) {
+                                var value = currentCell.Value;
+                                string format = currentCell.Style.Numberformat.Format;
+                                var newCell = new CellModel { RowIndex = i, ColumnIndex = j};
+
+                                formulaCellTables[k].CellList.Add(newCell);
+                            } 
+                        }
+                    }
+                }
+
+            }
+
+            return new CellGroupModel
+            {
+                DataCellTables = dataCells,
+                NotMergedDataCellTables = notMergedDataCells,
+                NotNullCellTables = notNullCells,
+                ShipParticularCellTables = shipParticularCells,
+                MergedRangesTables = mergedTables,
+                EndMarks = endMarks,
+                CustomFormattedCellTables = customFormattedCells,
+                FormulaCellTables = formulaCellTables
+            };
+        }
+
+        private bool isNotNullCell(ExcelRange range)
+        {
+            var value = range.Value;
+            if (value != null && value.ToString().StartsWith("{NN;"))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private bool isShipParticularCell(ExcelRange range)
+        {
+            var value = range.Value;
+            if (value != null && !value.ToString().StartsWith("{NN;") && value.ToString().StartsWith("{") && value.ToString().EndsWith("}"))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private bool isCustomFormattedCell(ExcelRange range)
+        {
+            string format = range.Style.Numberformat.Format;
+
+            if (format.StartsWith("["))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private bool isMergedDataCell(ExcelWorksheet currentWorksheet, int row, int column)
+        {
+            //merge hücrelerden sol üstte olan data celldir.
+            var mergeAdress = currentWorksheet.MergedCells[row, column];
+
+            //master = veriyi tutan sol üstteki hücre
+            string masterCellName = mergeAdress.Split(":")[0];
+            var masterCell = currentWorksheet.Cells[masterCellName];
+
+            if (masterCell.Start.Row == row && masterCell.Start.Column == column) 
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool isFormulaCell(ExcelRange range)
+        {
+            string formula = range.Formula;
+
+            // formül içeriyorsa formül celleri listesine eklenir.
+            if (formula != "")
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         private void SyncDataWithDB(string fileName, string logoName)
         {
             //kayıt edilen dosyanın yeni bir dosya mı yoksa kayıtlı bir dosya mı olduğunun belirlenmesi
@@ -385,10 +449,16 @@ namespace WebApplication1.Controllers
 
             List<CellRecord> DBCellRecords = _excelService.GetCellRecordsByDocName(fileName);
 
+            CellGroupModel _cellGroups;
+            using (ExcelPackage excelPackage = GetExcelPackageByTeplateName(templateName))
+            {
+                CellGroupModel cellGroups = FindCellGroups(excelPackage, templateName);
+                _cellGroups = cellGroups;
+            }
+
             //değişiklikler data cellerde veya formül cellerinde olabilir şablon üzerinden bu hücrelerin alınması.
-            DataAndFormulaCellsModel dataAndFormulaCellsModel = FindDataAndFormulaCells(templateName);
-            List<TableModel> dataTables = dataAndFormulaCellsModel.DataCellTables;
-            List<TableModel> formulaTables = dataAndFormulaCellsModel.FormulaCellTables;
+            List<TableModel> dataTables = _cellGroups.DataCellTables;
+            List<TableModel> formulaTables = _cellGroups.FormulaCellTables;
             //bakılacak cellerin bir yerde toplanması.
             foreach (TableModel dataTable in dataTables)
             {
@@ -405,9 +475,7 @@ namespace WebApplication1.Controllers
             List<CellRecord> updatedCellRecords = new List<CellRecord>();
             List<CellRecord> deletedCellRecords = new List<CellRecord>();
 
-            string tempFilePath = Path.Combine(Directory.GetCurrentDirectory(), "Temp", fileName + ".xlsx");
-            FileInfo fi = new FileInfo(tempFilePath);
-            using (ExcelPackage excelPackage = new ExcelPackage(fi))
+            using (ExcelPackage excelPackage = GetTemporaryExcelPackageByName(fileName + ".xlsx"))
             {
                 ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
 
@@ -428,9 +496,10 @@ namespace WebApplication1.Controllers
                     {
                         string value = tempCell.Text;
                         string type = null;
-                        if (cell.Format != null)
+                        string format = tempCell.Style.Numberformat.Format;
+                        if (format != null)
                         {
-                            type = FindTypeOfCell(cell.Format);
+                            type = FindTypeOfCell(format);
                         }
                         if (type == "number") value = tempCell.Value.ToString();
 
@@ -447,17 +516,18 @@ namespace WebApplication1.Controllers
                 {
                     ExcelWorksheet tempWorksheet = worksheetList[table.TableIndex];
 
-                    List<FilledCellModel> cellList = table.CellList;
-                    foreach(FilledCellModel cell in cellList)
+                    List<CellModel> cellList = table.CellList;
+                    foreach(CellModel cell in cellList)
                     {
                         var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex];
                         if (tempCell.Value != null)
                         {
                             string value = tempCell.Text;
                             string type = null;
-                            if (cell.Format != null)
+                            string format = tempCell.Style.Numberformat.Format;
+                            if (format != null)
                             {
-                                type = FindTypeOfCell(cell.Format);
+                                type = FindTypeOfCell(format);
                             }
                             if (type == "number") value = tempCell.Value.ToString();
 
@@ -486,17 +556,21 @@ namespace WebApplication1.Controllers
             string templateName = FindTemplateNameFromFileName(fileName);
             DateTime date = FindDateFromFileName(fileName);
 
+            CellGroupModel _cellGroups;
+            using (ExcelPackage excelPackage = GetExcelPackageByTeplateName(templateName))
+            {
+                CellGroupModel cellGroups = FindCellGroups(excelPackage, templateName);
+                _cellGroups = cellGroups;
+            }
+
             //değişiklikler data cellerde veya formül cellerinde olabilir şablon üzerinden bu hücrelerin alınması.
-            DataAndFormulaCellsModel dataAndFormulaCellsModel = FindDataAndFormulaCells(templateName);
-            List<TableModel> dataTables = dataAndFormulaCellsModel.DataCellTables;
-            List<TableModel> formulaTables = dataAndFormulaCellsModel.FormulaCellTables;
+            List<TableModel> dataTables = _cellGroups.DataCellTables;
+            List<TableModel> formulaTables = _cellGroups.FormulaCellTables;
 
             //eklenecek yeni kayıtlar listesi
             List<CellRecord> newCellRecords = new List<CellRecord>();
 
-            string tempFilePath = Path.Combine(Directory.GetCurrentDirectory(), "Temp", fileName + ".xlsx");
-            FileInfo fi = new FileInfo(tempFilePath);
-            using (ExcelPackage excelPackage = new ExcelPackage(fi))
+            using (ExcelPackage excelPackage = GetTemporaryExcelPackageByName(fileName + ".xlsx"))
             {
                 ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
 
@@ -506,9 +580,9 @@ namespace WebApplication1.Controllers
                 {
                     ExcelWorksheet tempWorksheet = worksheetList[table.TableIndex];
 
-                    List<FilledCellModel> cellList = table.CellList;
+                    List<CellModel> cellList = table.CellList;
 
-                    foreach(FilledCellModel cell in cellList)
+                    foreach(CellModel cell in cellList)
                     {
                         var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex];
                         
@@ -516,9 +590,10 @@ namespace WebApplication1.Controllers
                         {
                             string value = tempCell.Text;
                             string type = null;
-                            if(cell.Format != null)
+                            string format = tempCell.Style.Numberformat.Format;
+                            if (format != null)
                             {
-                                type = FindTypeOfCell(cell.Format);
+                                type = FindTypeOfCell(format);
                             }
                             if (type == "number") value = tempCell.Value.ToString();
 
@@ -543,9 +618,9 @@ namespace WebApplication1.Controllers
                 foreach (TableModel formulaTable in formulaTables)
                 {
                     ExcelWorksheet tempWorksheet = worksheetList[formulaTable.TableIndex];
-                    List<FilledCellModel> formulaCellList = formulaTable.CellList;
+                    List<CellModel> formulaCellList = formulaTable.CellList;
 
-                    foreach (FilledCellModel cell in formulaCellList)
+                    foreach (CellModel cell in formulaCellList)
                     {
                         var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex];
 
@@ -553,9 +628,10 @@ namespace WebApplication1.Controllers
                         {
                             string value = tempCell.Text;
                             string type = null;
-                            if (cell.Format != null)
+                            string format = tempCell.Style.Numberformat.Format;
+                            if (format != null)
                             {
-                                type = FindTypeOfCell(cell.Format);
+                                type = FindTypeOfCell(format);
                             }
                             if (type == "number") value = tempCell.Value.ToString();
 
@@ -607,6 +683,10 @@ namespace WebApplication1.Controllers
         private ExcelPackage GetSavedExcelPackageByName(string fileName)
         {
             string templateName = _excelService.GetTemplateName(fileName);
+            if(templateName == null)
+            {
+                templateName = FindTemplateNameFromFileName(fileName);
+            }
             string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
 
             //databasede kayıtlı hücreler
@@ -614,9 +694,6 @@ namespace WebApplication1.Controllers
 
             FileInfo fi = new FileInfo(templatePath);
             ExcelPackage excelPackage = new ExcelPackage(fi);
-
-            RemoveExcelShapesFromExcelPackage(excelPackage);
-            RemoveEndMarksFrowWorkBook(excelPackage.Workbook, templateName);
 
             ExcelWorkbook excelWorkBook = excelPackage.Workbook;
 
@@ -670,8 +747,6 @@ namespace WebApplication1.Controllers
             string templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
             FileInfo fi = new FileInfo(templatePath);
             ExcelPackage excelPackage = new ExcelPackage(fi);
-            RemoveExcelShapesFromExcelPackage(excelPackage);
-            RemoveEndMarksFrowWorkBook(excelPackage.Workbook, templateName);
 
             return excelPackage;
         }
@@ -735,6 +810,15 @@ namespace WebApplication1.Controllers
             return excelPackage;
         }
 
+        private ExcelPackage GetTemporaryExcelPackageByName(string fileName)
+        {
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "Temp", fileName);
+            FileInfo fi = new FileInfo(path);
+            ExcelPackage excelPackage = new ExcelPackage(fi);
+
+            return excelPackage;
+        }
+
         private void RemoveExcelShapesFromExcelPackage(ExcelPackage excelPackage)
         {
             ExcelWorkbook excelWorkBook = excelPackage.Workbook;
@@ -759,244 +843,6 @@ namespace WebApplication1.Controllers
                     drawings.Remove(drawingToRemove);
                 }
             }
-        }
-
-        private List<TableModel> FindShipParticularCells(string templateName)
-        {
-            //ship particular hücrelerin belirlenmesi
-            //"{" ile başlayıp "}" ile biterler {NN} hariç
-            string path = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
-            List<TableModel> shipParticularCellTables = new List<TableModel>();
-
-            FileInfo fi = new FileInfo(path);
-            using (ExcelPackage excelPackage = new ExcelPackage(fi))
-            {
-                ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
-
-                //endmarkların bulunması
-                var endMarks = _excelService.GetEndMarksofTemplate(templateName);
-                if (endMarks.Count == 0)
-                {
-                    endMarks = FindEndMarksInTemplate(templateName);
-                }
-
-                //sheetlerin gezilmesi
-                for (int k = 0; k < worksheetList.Count; k++)
-                {
-                    var currentWorksheet = worksheetList[k];
-
-                    shipParticularCellTables.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
-
-                    //bir sheet için {E} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
-                    int countOfRowsToSearch = 300;
-                    int countOfColumnsToSearch = 300;
-
-                    //aranacak sınırın belirlenmesi
-                    if (endMarks.Count > 0)
-                    {
-                        foreach (EndMark endMark in endMarks)
-                        {
-                            if (endMark.SheetIndex == k)
-                            {
-                                countOfRowsToSearch = endMark.RowIndex;
-                                countOfColumnsToSearch = endMark.ColumnIndex;
-                            }
-                        }
-                    }
-
-                    //ship particular değişkenlerin aranması
-                    for (int i = 1; i < countOfRowsToSearch; i++) //satır
-                    {
-                        for (int j = 1; j < countOfColumnsToSearch; j++) //sütun
-                        {
-                            var currentCell = currentWorksheet.Cells[i, j];
-                            bool locked = currentCell.Style.Locked;
-
-                            if (!locked)
-                            {
-                                var value = currentCell.Value;
-
-                                if (value != null && !value.ToString().StartsWith("{NN;") && value.ToString() != "{E}" && value.ToString().StartsWith("{") && value.ToString().EndsWith("}"))
-                                {
-                                    shipParticularCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value.ToString()});
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            return shipParticularCellTables;
-        }
-
-        private List<TableModel> FindCustomFormattedCells(string templateName)
-        {
-            string path = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
-            List<TableModel> customFormattedCellTables = new List<TableModel>();
-
-            FileInfo fi = new FileInfo(path);
-            using (ExcelPackage excelPackage = new ExcelPackage(fi))
-            {
-                ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
-
-                //endmarkların bulunması
-                var endMarks = _excelService.GetEndMarksofTemplate(templateName);
-                if (endMarks.Count == 0)
-                {
-                    endMarks = FindEndMarksInTemplate(templateName);
-                }
-
-                //sheetlerin gezilmesi
-                for (int k = 0; k < worksheetList.Count; k++)
-                {
-                    var currentWorksheet = worksheetList[k];
-
-                    customFormattedCellTables.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
-
-                    //bir sheet için {E} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
-                    int countOfRowsToSearch = 300;
-                    int countOfColumnsToSearch = 300;
-
-                    //aranacak sınırın belirlenmesi
-                    if (endMarks.Count > 0)
-                    {
-                        foreach (EndMark endMark in endMarks)
-                        {
-                            if (endMark.SheetIndex == k)
-                            {
-                                countOfRowsToSearch = endMark.RowIndex;
-                                countOfColumnsToSearch = endMark.ColumnIndex;
-                            }
-                        }
-                    }
-
-                    //ship particular değişkenlerin aranması
-                    for (int i = 1; i < countOfRowsToSearch; i++) //satır
-                    {
-                        for (int j = 1; j < countOfColumnsToSearch; j++) //sütun
-                        {
-                            var currentCell = currentWorksheet.Cells[i, j];
-                            bool locked = currentCell.Style.Locked;
-
-                            if (!locked)
-                            {
-                                var value = currentCell.Value;
-                                string format = currentCell.Style.Numberformat.Format;
-
-                                if (format.StartsWith("["))
-                                {
-                                    customFormattedCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null? null : value.ToString(), Format = format });
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-                return customFormattedCellTables;
-        }
-
-        private DataAndFormulaCellsModel FindDataAndFormulaCells(string templateName)
-        {
-            List<TableModel> dataCellTables = new List<TableModel>();
-            List<TableModel> formulaCellTables = new List<TableModel>();
-
-            string path = Path.Combine(Directory.GetCurrentDirectory(), "Forms", templateName);
-            FileInfo fi = new FileInfo(path);
-            using (ExcelPackage excelPackage = new ExcelPackage(fi))
-            {
-                ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
-
-                //endmarkların bulunması
-                var endMarks = _excelService.GetEndMarksofTemplate(templateName);
-                if (endMarks.Count == 0)
-                {
-                    endMarks = FindEndMarksInTemplate(templateName);
-                }
-
-                //sheetlerin gezilmesi
-                for (int k = 0; k < worksheetList.Count; k++)
-                {
-                    var currentWorksheet = worksheetList[k];
-
-                    dataCellTables.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
-                    formulaCellTables.Add(new TableModel { TableIndex = k, CellList = new List<FilledCellModel>() });
-
-                    //bir sheet için {E} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
-                    int countOfRowsToSearch = 300;
-                    int countOfColumnsToSearch = 300;
-
-                    //aranacak sınırın belirlenmesi
-                    if (endMarks.Count > 0)
-                    {
-                        foreach (EndMark endMark in endMarks)
-                        {
-                            if (endMark.SheetIndex == k)
-                            {
-                                countOfRowsToSearch = endMark.RowIndex;
-                                countOfColumnsToSearch = endMark.ColumnIndex;
-                            }
-                        }
-                    }
-
-                    //cellerin aranması
-                    for (int i = 1; i < countOfRowsToSearch; i++) //satır
-                    {
-                        for (int j = 1; j < countOfColumnsToSearch; j++) //sütun
-                        {
-                            var currentCell = currentWorksheet.Cells[i, j];
-                            bool locked = currentCell.Style.Locked;
-                            bool merged = currentCell.Merge;
-                            string formula = currentCell.Formula;
-
-                            // formül içeriyorsa formül celleri listesine eklenir.
-                            if (formula != "")
-                            {
-                                var value = currentCell.Value;
-                                var format = currentCell.Style.Numberformat.Format;
-                                if(format == "General")
-                                {
-                                    format = null;
-                                }
-
-                                formulaCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format});
-                            }
-
-                            if (!locked)
-                            {
-                                var value = currentCell.Value;
-                                var format = currentCell.Style.Numberformat.Format;
-                                if (format == "General")
-                                {
-                                    format = null;
-                                }
-
-                                if (!merged) //data celldir
-                                {
-                                    dataCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format});
-                                }
-                                else
-                                {
-                                    //current cell sol üstteki cell ise data celldir.
-
-                                    //merge aralığını alırız(örn. "A1:B3"). ":" işaretinden önceki eleman sol üst hücredeki elemandır.
-                                    var mergeAdress = currentWorksheet.MergedCells[i, j];
-
-                                    string masterCellName = mergeAdress.Split(":")[0];
-                                    var masterCell = currentWorksheet.Cells[masterCellName];
-
-                                    if (masterCell.Start.Row == i && masterCell.Start.Column == j) //sol üstteki celldeyiz, data celldir.
-                                    {
-                                        dataCellTables[k].CellList.Add(new FilledCellModel { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString(), Format = format});
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            return new DataAndFormulaCellsModel { DataCellTables = dataCellTables, FormulaCellTables = formulaCellTables };
         }
 
         private string FindTypeOfCell(string format)

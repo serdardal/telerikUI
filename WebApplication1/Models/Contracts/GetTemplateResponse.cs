@@ -7,13 +7,13 @@ using WebApplication1.Models.DbModels;
 
 namespace WebApplication1.Models.Contracts
 {
-    public class UnlockResponseModel
+    public class GetTemplateResponse
     {
+        public string Base64File { get; set; }
+
         public List<TableModel> NotMergedDataCellTables { get; set; }
 
-        public List<TableModel> MergedDataCellTables { get; set; }
-
-        public List<TableModel> NotNullCellTables { get; set; }
+        public List<NotNullTableModel> NotNullCellTables { get; set; }
 
         public List<TableModel> ShipParticularCellTables { get; set; }
 
@@ -21,7 +21,6 @@ namespace WebApplication1.Models.Contracts
 
         public List<EndMark> EndMarks { get; set; }
 
-        public List<TableModel> CustomFormattedCellTables { get; set; }
-
+        public List<CustomFormattedTableModel> CustomFormattedCellTables { get; set; }
     }
 }

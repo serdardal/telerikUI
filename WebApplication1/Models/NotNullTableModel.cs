@@ -2,14 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using WebApplication1.Models;
 
-namespace Deneme.Models
+namespace WebApplication1.Models
 {
-    public class TableModel
+    public class NotNullTableModel
     {
         public int TableIndex { get; set; }
 
-        public List<CellModel> CellList { get; set; }
+        public List<CellModelWithValue> CellList { get; set; }
     }
 }

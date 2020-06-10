@@ -6,10 +6,8 @@ using System.Threading.Tasks;
 
 namespace WebApplication1.Models
 {
-    public class CellUnlockRequestModel
+    public class CellModelWithValue : CellModel
     {
-        public string DocumentName { get; set; }
-
-        public bool IsTemplate { get; set; }
+        public string Value { get; set; }
     }
 }

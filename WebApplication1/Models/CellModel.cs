@@ -5,10 +5,7 @@ using System.Threading.Tasks;
 
 namespace Deneme.Models
 {
-    public class FilledCellModel : CellBase
+    public class CellModel : CellBase
     {
-        public string Value { get; set; }
-
-        public string Format { get; set; }
     }
 }
