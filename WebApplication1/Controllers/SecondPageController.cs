@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Deneme.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -47,9 +48,12 @@ namespace WebApplication1.Controllers
             //ship particular değişkenlerin bulunduğu dictionary
             Dictionary<string, string> variableDictionary = new Dictionary<string, string>();
 
+            Dictionary<string, List<string>> listDefaultsDictionary = new Dictionary<string, List<string>>();
+            listDefaultsDictionary.Add("{testDefault}", new List<string> { "value1", "value2", "value3" });
+
             //databasede kayıtlı değişkenlerin dictionary'e eklenmesi
             List<Default> defaults = _excelService.GetDefaults();
-            foreach(Default item in defaults)
+            foreach (Default item in defaults)
             {
                 variableDictionary.Add(item.Key, item.Value);
             }
@@ -80,15 +84,36 @@ namespace WebApplication1.Controllers
 
                     foreach (CellModel cell in cellList)
                     {
-                        var value = templateWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value;
-                        if (value != null) {
+                        var tempCell = templateWorksheet.Cells[cell.RowIndex, cell.ColumnIndex];
+                        var value = tempCell.Value;
+                        if (value != null)
+                        {
                             string key = value.ToString();
                             if (variableDictionary.ContainsKey(key))
                             {
                                 templateWorksheet.Cells[cell.RowIndex, cell.ColumnIndex].Value = variableDictionary[key];
                             }
+
+                            if (listDefaultsDictionary.ContainsKey(key))
+                            {
+                                var validation = templateWorksheet.DataValidations.AddListValidation(tempCell.Address);
+                                var list = listDefaultsDictionary[key];
+                                StringBuilder sb = new StringBuilder("\"");
+                                for (int j = 0; j < list.Count; j++)
+                                {
+                                    var defValue = list[j];
+                                    sb.Append(defValue);
+
+                                    if (j != list.Count - 1)
+                                    {
+                                        sb.Append(", ");
+                                    }
+                                }
+                                sb.Append("\"");
+                                validation.Formula.ExcelFormula = sb.ToString();
+                            }
                         }
-                        
+
                     }
                 }
 
@@ -100,7 +125,8 @@ namespace WebApplication1.Controllers
             string file = Convert.ToBase64String(fileByteArray);
             string base64File = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + file;
 
-            return new GetTemplateResponse {
+            return new GetTemplateResponse
+            {
                 Base64File = base64File,
                 NotMergedDataCellTables = _cellGroupModel.NotMergedDataCellTables,
                 NotNullCellTables = _cellGroupModel.NotNullCellTables,
@@ -211,7 +237,8 @@ namespace WebApplication1.Controllers
         }
 
         [HttpGet("SecondPage/OpenFileReadonlyInNewTab/{fileName}/{readOnly}")]
-        public IActionResult OpenFileReadonlyInNewTab(string fileName, bool readOnly) {
+        public IActionResult OpenFileReadonlyInNewTab(string fileName, bool readOnly)
+        {
             IndexModel model = new IndexModel { OpenInNewTab = true, FileName = fileName, ReadOnly = readOnly };
             return View("Index", model);
         }
@@ -249,14 +276,12 @@ namespace WebApplication1.Controllers
             List<CustomFormattedTableModel> customFormattedCells = new List<CustomFormattedTableModel>();
             List<TableModel> formulaCellTables = new List<TableModel>();
 
-            List<EndMark> endMarks = new List<EndMark>();
             //endmarkların bulunması
             var endMarkRecords = _excelService.GetEndMarksofTemplate(templateName);
             if (endMarkRecords.Count == 0)
             {
                 endMarkRecords = FindEndMarksInTemplate(templateName);
             }
-            endMarks = endMarkRecords;
 
             //sheetlerin gezilmesi
             for (int k = 0; k < worksheetList.Count; k++)
@@ -270,8 +295,6 @@ namespace WebApplication1.Controllers
                 shipParticularCells.Add(new TableModel { TableIndex = k, CellList = new List<CellModel>() });
                 customFormattedCells.Add(new CustomFormattedTableModel { TableIndex = k, CellList = new List<CellModelWithFormat>() });
                 formulaCellTables.Add(new TableModel { TableIndex = k, CellList = new List<CellModel>() });
-
-                List<string> mergedCellList = currentWorksheet.MergedCells.ToList();
 
                 //bir sheet için {E} sınır belirlenemez ise hücreler 300x300 bir alanda aranır.
                 int countOfRowsToSearch = 300;
@@ -304,7 +327,7 @@ namespace WebApplication1.Controllers
                         {
                             var value = currentCell.Value;
                             string format = currentCell.Style.Numberformat.Format;
-                            var newCell = new CellModel { RowIndex = i, ColumnIndex = j};
+                            var newCell = new CellModel { RowIndex = i, ColumnIndex = j };
 
                             if (!merged)
                             {
@@ -313,7 +336,7 @@ namespace WebApplication1.Controllers
                             }
                             else
                             {
-                                if(isMergedDataCell(currentWorksheet, i, j))
+                                if (isMergedDataCell(currentWorksheet, i, j))
                                 {
                                     //verinin tutulduğu hücre olduğu için dataCells e eklenir.
                                     dataCells[k].CellList.Add(newCell);
@@ -326,7 +349,7 @@ namespace WebApplication1.Controllers
 
                             if (isNotNullCell(currentCell))
                             {
-                                var newNotNullCell = new CellModelWithValue { RowIndex = i, ColumnIndex = j, Value= value == null? null : value.ToString() };
+                                var newNotNullCell = new CellModelWithValue { RowIndex = i, ColumnIndex = j, Value = value == null ? null : value.ToString() };
                                 notNullCells[k].CellList.Add(newNotNullCell);
                             }
 
@@ -341,13 +364,12 @@ namespace WebApplication1.Controllers
                         }
                         else // formül hücreleri locked durumdadır.
                         {
-                            if (isFormulaCell(currentCell)) {
-                                var value = currentCell.Value;
-                                string format = currentCell.Style.Numberformat.Format;
-                                var newCell = new CellModel { RowIndex = i, ColumnIndex = j};
+                            if (isFormulaCell(currentCell))
+                            {
+                                var newCell = new CellModel { RowIndex = i, ColumnIndex = j };
 
                                 formulaCellTables[k].CellList.Add(newCell);
-                            } 
+                            }
                         }
                     }
                 }
@@ -361,7 +383,6 @@ namespace WebApplication1.Controllers
                 NotNullCellTables = notNullCells,
                 ShipParticularCellTables = shipParticularCells,
                 MergedRangesTables = mergedTables,
-                EndMarks = endMarks,
                 CustomFormattedCellTables = customFormattedCells,
                 FormulaCellTables = formulaCellTables
             };
@@ -407,7 +428,7 @@ namespace WebApplication1.Controllers
             string masterCellName = mergeAdress.Split(":")[0];
             var masterCell = currentWorksheet.Cells[masterCellName];
 
-            if (masterCell.Start.Row == row && masterCell.Start.Column == column) 
+            if (masterCell.Start.Row == row && masterCell.Start.Column == column)
             {
                 return true;
             }
@@ -432,7 +453,7 @@ namespace WebApplication1.Controllers
         {
             //kayıt edilen dosyanın yeni bir dosya mı yoksa kayıtlı bir dosya mı olduğunun belirlenmesi
             var cells = _excelService.GetCellRecordsByDocName(fileName);
-            if(cells.Count > 0)// kayıt bulunuyor yani update işlemi
+            if (cells.Count > 0)// kayıt bulunuyor yani update işlemi
             {
                 UpdateExistingFileInDB(fileName);
             }
@@ -480,7 +501,7 @@ namespace WebApplication1.Controllers
                 ExcelWorksheets worksheetList = excelPackage.Workbook.Worksheets;
 
                 // güncellenmiş veya silinmiş kayıtların belirlenmesi.
-                foreach(CellRecord cellRecord in DBCellRecords)
+                foreach (CellRecord cellRecord in DBCellRecords)
                 {
                     var cell = dataTables[cellRecord.TableIndex].CellList.FirstOrDefault(x => x.RowIndex == cellRecord.RowIndex && x.ColumnIndex == cellRecord.ColumnIndex);
                     ExcelWorksheet tempWorksheet = worksheetList[cellRecord.TableIndex];
@@ -489,7 +510,7 @@ namespace WebApplication1.Controllers
                     if (tempCell.Value == null)
                     {
                         deletedCellRecords.Add(cellRecord);
-                        
+
                     }
                     // değer değiştiyse update edilmiş
                     else if (tempCell.Text != cellRecord.Data || tempCell.Value.ToString() != cellRecord.Data)
@@ -512,12 +533,12 @@ namespace WebApplication1.Controllers
                 }
 
                 //yeni eklenmiş kayıtların belirlenmesi.
-                foreach(TableModel table in dataTables)
+                foreach (TableModel table in dataTables)
                 {
                     ExcelWorksheet tempWorksheet = worksheetList[table.TableIndex];
 
                     List<CellModel> cellList = table.CellList;
-                    foreach(CellModel cell in cellList)
+                    foreach (CellModel cell in cellList)
                     {
                         var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex];
                         if (tempCell.Value != null)
@@ -576,16 +597,16 @@ namespace WebApplication1.Controllers
 
                 //data cellerin satır ve sütunlarını biliyoruz
                 //temp dosya üzerinde bu koordinatlara gidilir ve null değilse değer alınır.
-                foreach(TableModel table in dataTables)
+                foreach (TableModel table in dataTables)
                 {
                     ExcelWorksheet tempWorksheet = worksheetList[table.TableIndex];
 
                     List<CellModel> cellList = table.CellList;
 
-                    foreach(CellModel cell in cellList)
+                    foreach (CellModel cell in cellList)
                     {
                         var tempCell = tempWorksheet.Cells[cell.RowIndex, cell.ColumnIndex];
-                        
+
                         if (tempCell.Value != null)
                         {
                             string value = tempCell.Text;
@@ -683,7 +704,7 @@ namespace WebApplication1.Controllers
         private ExcelPackage GetSavedExcelPackageByName(string fileName)
         {
             string templateName = _excelService.GetTemplateName(fileName);
-            if(templateName == null)
+            if (templateName == null)
             {
                 templateName = FindTemplateNameFromFileName(fileName);
             }
@@ -709,7 +730,7 @@ namespace WebApplication1.Controllers
                     {
                         string type = FindTypeOfCell(range.Style.Numberformat.Format);
 
-                        if(type == "text")
+                        if (type == "text")
                         {
                             range.Value = cell.Data;
                         }
@@ -734,7 +755,7 @@ namespace WebApplication1.Controllers
                     {
                         range.Value = cell.Data;
                     }
-                    
+
 
                 }
             }
@@ -824,21 +845,22 @@ namespace WebApplication1.Controllers
             ExcelWorkbook excelWorkBook = excelPackage.Workbook;
             ExcelWorksheets excelWorksheets = excelWorkBook.Worksheets;
 
-            foreach(ExcelWorksheet worksheet in excelWorksheets)
+            foreach (ExcelWorksheet worksheet in excelWorksheets)
             {
                 OfficeOpenXml.Drawing.ExcelDrawings drawings = worksheet.Drawings;
 
                 List<OfficeOpenXml.Drawing.ExcelDrawing> drawingRemoveList = new List<OfficeOpenXml.Drawing.ExcelDrawing>();
 
-                foreach(OfficeOpenXml.Drawing.ExcelDrawing drawing in drawings)
+                foreach (OfficeOpenXml.Drawing.ExcelDrawing drawing in drawings)
                 {
                     //drawingin tipi ExcelShape ise çıkar
-                    if(drawing.GetType() == typeof (OfficeOpenXml.Drawing.ExcelShape)){
+                    if (drawing.GetType() == typeof(OfficeOpenXml.Drawing.ExcelShape))
+                    {
                         drawingRemoveList.Add(drawing);
                     }
                 }
 
-                foreach(OfficeOpenXml.Drawing.ExcelDrawing drawingToRemove in drawingRemoveList)
+                foreach (OfficeOpenXml.Drawing.ExcelDrawing drawingToRemove in drawingRemoveList)
                 {
                     drawings.Remove(drawingToRemove);
                 }
@@ -858,7 +880,7 @@ namespace WebApplication1.Controllers
                 return "date";
             }
             //number için [Blue][=1]0; // 0.0 // #.##0 gibi formatlar gelebilir
-            else if (format.StartsWith("[") || format.StartsWith("0") ||format.StartsWith("#"))
+            else if (format.StartsWith("[") || format.StartsWith("0") || format.StartsWith("#"))
             {
                 return "number";
             }
@@ -895,9 +917,9 @@ namespace WebApplication1.Controllers
                             var currentCell = currentWorksheet.Cells[i, j];
                             var value = currentCell.Value;
 
-                            if(value != null && value.ToString() == "{E}")
+                            if (value != null && value.ToString() == "{E}")
                             {
-                                endMarks.Add(new EndMark { TemplateName = templateName, SheetIndex = k, RowIndex = i, ColumnIndex = j }); ;                                found = true;
+                                endMarks.Add(new EndMark { TemplateName = templateName, SheetIndex = k, RowIndex = i, ColumnIndex = j }); ; found = true;
 
                                 break;
                             }
@@ -917,7 +939,7 @@ namespace WebApplication1.Controllers
 
             ExcelWorksheets worksheetList = workBook.Worksheets;
 
-            foreach(EndMark endMark in endMarks)
+            foreach (EndMark endMark in endMarks)
             {
                 ExcelWorksheet worksheet = worksheetList[endMark.SheetIndex];
 
@@ -951,7 +973,7 @@ namespace WebApplication1.Controllers
         {
             ExcelWorksheets excelWorksheets = workBook.Worksheets;
 
-            foreach(ColoredCellModel coloredCell in coloredCells)
+            foreach (ColoredCellModel coloredCell in coloredCells)
             {
                 ExcelWorksheet worksheet = excelWorksheets[coloredCell.SheetIndex];
 
